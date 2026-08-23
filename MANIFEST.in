@@ -1,0 +1,6 @@
+# setuptools includes test_*.py files by default but not the helpers
+# they import (conftest.py, wsgi.py, the package __init__.py), so the
+# tests directory is taken whole, with the repository's other notes.
+graft tests
+include CHANGES.md TESTING.md
+global-exclude __pycache__ *.py[cod]

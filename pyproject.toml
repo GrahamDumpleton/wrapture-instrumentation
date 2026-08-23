@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=62.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wrapture-instrumentation"
+dynamic = ["version"]
+description = "Instrumentation for common Python packages, applied through wrapture."
+readme = "README.md"
+license = "BSD-2-Clause"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Graham Dumpleton", email = "Graham.Dumpleton@gmail.com"}
+]
+requires-python = ">=3.12"
+keywords = ["wrapture", "instrumentation", "monkey patching", "tracing"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+# wrapture is the only dependency, ever. An instrumentation package
+# never depends on the packages it instruments: installing it must not
+# install Flask, and whether a target is present and at a supported
+# version is checked by wrapture at apply time from the class data.
+dependencies = [
+    "wrapture>=1.0.0a3",
+]
+
+[project.urls]
+Homepage = "https://github.com/GrahamDumpleton/wrapture-instrumentation"
+Documentation = "https://wrapture.readthedocs.io"
+"Bug Tracker" = "https://github.com/GrahamDumpleton/wrapture-instrumentation/issues/"
+
+# One entry per target, the entry point name being the bare target
+# name the config's [[instrument]] entry uses. The group name has a
+# dot in it, hence the quoted header.
+[project.entry-points."wrapture.instrumentation"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+wrapture_instrumentation = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "wrapture_instrumentation.__version__"}
+
+[dependency-groups]
+# The test group carries every target the tests need, at whatever
+# version the lock resolves; older versions of a target are overlaid
+# per run by the Justfile's per-target matrix recipes.
+test = [
+    "pytest",
+]
+dev = [
+    {include-group = "test"},
+    "mypy",
+    "ruff",
+    "setuptools",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/wrapture_instrumentation", "tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["wrapture_instrumentation"]
