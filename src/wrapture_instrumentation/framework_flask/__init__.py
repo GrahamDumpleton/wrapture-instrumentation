@@ -70,8 +70,10 @@ class FlaskInstrumentation(wrapture.Instrumentation):
 
         blueprints.instrument(module, self)
 
-    @wrapture.instrumentation_hook("flask.templating")
-    def flask_templating(self, name: str, module: Any) -> None:
-        """Bind the rendering functions once flask.templating exists."""
+    @wrapture.instrumentation_hook("flask")
+    def flask_package(self, name: str, module: Any) -> None:
+        """Bind the rendering functions once the flask package has
+        finished importing: both flask.templating and the namespace
+        re-exports exist by then, in every import order."""
 
         templating.instrument(module, self)

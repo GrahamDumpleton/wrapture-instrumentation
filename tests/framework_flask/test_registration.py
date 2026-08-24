@@ -45,7 +45,7 @@ def test_a_config_entry_applies_and_reverts() -> None:
         assert f"target flask {metadata.version('flask')}" in report
         assert (
             "applied flask.app, flask.sansio.scaffold, flask.sansio.blueprints,"
-            " flask.templating" in report
+            " flask" in report
         )
         assert "removable" in report
 
@@ -70,7 +70,8 @@ def test_the_listing_tool_describes_the_entry() -> None:
         f"  target: flask {metadata.version('flask')}, supported (>=3.0,<4)" in output
     )
     assert (
-        "  modules: flask.app, flask.sansio.scaffold, flask.sansio.blueprints" in output
+        "  modules: flask.app, flask.sansio.scaffold, flask.sansio.blueprints,"
+        " flask" in output
     )
     assert "  removable: yes" in output
     assert "  settings:" in output
@@ -89,7 +90,7 @@ def test_the_listing_tool_describes_the_entry() -> None:
     assert "  would register: flask.app\n" in output
     assert "  would register: flask.sansio.scaffold\n" in output
     assert "  would register: flask.sansio.blueprints\n" in output
-    assert "  would register: flask.templating\n" in output
+    assert "  would register: flask\n" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:

@@ -136,11 +136,11 @@ def test_a_from_import_taken_before_apply_stays_plain(tape: Tape) -> None:
 
 
 def test_a_triggers_subset_applies_templating_alone() -> None:
-    # The templating trigger stands alone: with only it in play the
-    # renders record while requests and views do not.
+    # The package trigger carries templating alone: with only it in
+    # play the renders record while requests and views do not.
 
     with (
-        instrumentation(FlaskInstrumentation, triggers="flask.templating"),
+        instrumentation(FlaskInstrumentation, triggers="flask"),
         timeline() as tape,
     ):
         response = request(make_pages(), "GET", "/hello/pat")
@@ -162,11 +162,12 @@ def test_removal_restores_both_attributes() -> None:
 
 def test_the_fresh_import_order_wraps_and_restores_the_namespace() -> None:
     # The runner case: the instrumentation applies before flask ever
-    # imports, the trigger fires while the flask package body is still
-    # executing, and the package's own from-import copies the wrapped
-    # functions into its namespace. Removal cannot reach those copies
-    # through the bindings, so a cleanup callback restores them; a
-    # fresh interpreter is the only honest way to exercise the order.
+    # imports. The package trigger fires only after flask/__init__
+    # finishes executing, by which point its from-import has copied
+    # the original functions into the namespace, so all eight
+    # attributes bind as plain functions and removal restores every
+    # one through the binding machinery; a fresh interpreter is the
+    # only honest way to exercise the order.
 
     output = run_snippet(
         "import types\n"

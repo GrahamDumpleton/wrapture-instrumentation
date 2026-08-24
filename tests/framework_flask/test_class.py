@@ -61,7 +61,7 @@ def test_constructing_without_settings_works() -> None:
         "flask.app",
         "flask.sansio.scaffold",
         "flask.sansio.blueprints",
-        "flask.templating",
+        "flask",
     )
 
 
@@ -91,6 +91,6 @@ def test_the_installed_flask_is_within_supports() -> None:
                 "flask.app",
                 "flask.sansio.scaffold",
                 "flask.sansio.blueprints",
-                "flask.templating",
+                "flask",
             )
             assert applied.pending == ()
