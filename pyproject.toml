@@ -50,7 +50,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-wrapture_instrumentation = ["py.typed"]
+wrapture_instrumentation = ["py.typed", "*/README.md"]
 
 [tool.setuptools.dynamic]
 version = {attr = "wrapture_instrumentation.__version__"}

@@ -72,11 +72,14 @@ $ python -m wrapture.tools instrumentation --toml
 
 | Target | Supported versions | Records | Settings |
 | ------ | ------------------ | ------- | -------- |
-| `flask` | Flask 3.x | Every request as one tree (the recording WSGI middleware installed on each application at construction), every view function beneath its request (observed as routes register, blueprints and `MethodView`s included), and the exception Flask catches on its way to a 500 noted on the request. | none yet |
+| [`flask`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/framework_flask/README.md) | Flask 3.x | Every request as one tree, annotated with route and endpoint; every view observed and labelled by endpoint; unhandled exceptions noted on the request. | none yet |
 
-The entry point name is the config's `name`; the table says what each
-instrumentation does in the current cut. Settings, further choke
-points and wider version ranges are being added target by target.
+The entry point name is the config's `name`; the table summarizes
+each instrumentation, and the linked per-target README is its full
+user documentation: what records, what the events carry, the
+settings, and what is deliberately not traced. Settings, further
+choke points and wider version ranges are being added target by
+target.
 
 ## Adding a target
 
@@ -99,11 +102,17 @@ directory name is internal; the entry point name, and so the name a
 config uses, is always the bare target.
 
 The subpackage's `__init__.py` holds one `wrapture.Instrumentation`
-subclass and imports only wrapture; everything that touches the
-target lives in `hooks.py`, reached by an import inside `apply()`.
+subclass, with one `@wrapture.instrumentation_hook` method per
+trigger module, and imports only wrapture; everything that touches
+the target lives in sibling submodules named for what they patch
+(`app.py` for `flask.app`), themselves importing only wrapture at top
+level.
 The class is registered in `pyproject.toml` under
 `[project.entry-points."wrapture.instrumentation"]`, and gets its own
-test suite under `tests/<category>_<target>/`. The
+test suite under `tests/<category>_<target>/`. Each subpackage also
+carries a `README.md`, its user documentation, rendered by GitHub
+when browsing the directory and linked from the table above; the
+module docstrings stay the implementation commentary. The
 [instrumentation packages](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html)
 page of the wrapture documentation is the full contract; TESTING.md
 here covers the tests.
