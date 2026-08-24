@@ -2,5 +2,6 @@
 # they import (conftest.py, wsgi.py, the package __init__.py), so the
 # tests directory is taken whole, with the repository's other notes.
 graft tests
+graft demo
 include CHANGES.md TESTING.md
 global-exclude __pycache__ *.py[cod]

@@ -74,6 +74,42 @@ Equivalently, run pytest directly with uv:
 uv run pytest
 ```
 
+## Watching what the tests record
+
+The suites assert on tapes rather than printing anything, but the
+recorded events can be watched live for visual verification. Setting
+WRAPTURE_PRINTER in the environment installs a process-wide
+wrapture.Printer sink for the session, streaming one line to stderr
+as each operation begins and a closing line with its outcome and
+timing; pytest captures stderr, so add -s to see it:
+
+```console
+WRAPTURE_PRINTER=1 just test tests/framework_flask -s
+```
+
+The sink is consulted alongside the tests' own scoped tapes, so the
+stream shows exactly what each tape hears without disturbing any
+assertion.
+
+For a purpose-built run rather than the tests' traffic, each target
+also has a demo module under demo/ that applies its instrumentation,
+drives the test application through the WSGI driver, and prints both
+the live stream and the reconstructed tree with timings:
+
+```console
+just demo-flask
+```
+
+With --otel the same events also export as OpenTelemetry spans over
+OTLP (to http://localhost:4318, or wherever
+OTEL_EXPORTER_OTLP_ENDPOINT points), for verifying the spans in a
+local backend such as Jaeger; the Justfile target overlays the
+wrapture[otel] dependencies for the run:
+
+```console
+just demo-flask --otel
+```
+
 ## Testing across Python versions
 
 The project supports multiple Python versions, including the free

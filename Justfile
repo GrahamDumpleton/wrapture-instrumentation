@@ -52,6 +52,15 @@ test-flask-all *ARGS:
         just test-flask "${version}" {{ARGS}}
     done
 
+# Drive the shop application with the Flask instrumentation applied,
+# for verifying the results by eye: the live event stream, then the
+# reconstructed tree. The wrapture[otel] overlay carries the optional
+# OpenTelemetry dependencies, so `just demo-flask --otel` also exports
+# the events as spans to a local OTLP endpoint (localhost:4318 unless
+# OTEL_EXPORTER_OTLP_ENDPOINT says otherwise).
+demo-flask *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.framework_flask {{ARGS}}
+
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
 # run, for iterating against unreleased wrapture changes without
@@ -62,13 +71,13 @@ test-dev *ARGS:
 
 # Check code with the ruff linter and formatter.
 lint:
-    uv run ruff check src tests
-    uv run ruff format --check src tests
+    uv run ruff check src tests demo
+    uv run ruff format --check src tests demo
 
 # Reformat code and fix lint issues that are auto-fixable.
 format:
-    uv run ruff format src tests
-    uv run ruff check --fix src tests
+    uv run ruff format src tests demo
+    uv run ruff check --fix src tests demo
 
 # Type check the project with mypy.
 typecheck:

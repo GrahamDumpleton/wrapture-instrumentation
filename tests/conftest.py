@@ -1,10 +1,15 @@
-"""Helpers shared by every suite."""
+"""Helpers shared by every suite, and the optional live printer."""
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from collections.abc import Iterator
 from importlib import metadata
+
+import pytest
+import wrapture
 
 DISTRIBUTION = "wrapture-instrumentation"
 
@@ -55,3 +60,29 @@ def registered_entry_points() -> list[metadata.EntryPoint]:
         if point.dist is not None
         and point.dist.name.replace("_", "-").lower() == DISTRIBUTION
     ]
+
+
+@pytest.fixture(autouse=True, scope="session")
+def printer() -> Iterator[None]:
+    """Stream every recorded event live to stderr when WRAPTURE_PRINTER
+    is set in the environment, for visually verifying what the tests
+    record; pytest captures stderr, so run with -s to see it:
+
+        WRAPTURE_PRINTER=1 just test tests/framework_flask -s
+
+    A process-wide sink is consulted alongside the tests' own scoped
+    tapes, so the stream shows exactly what each tape hears without
+    disturbing any assertion.
+    """
+
+    if not os.environ.get("WRAPTURE_PRINTER"):
+        yield
+        return
+
+    sink = wrapture.Printer()
+    wrapture.add_sink(sink)
+
+    try:
+        yield
+    finally:
+        wrapture.remove_sink(sink)

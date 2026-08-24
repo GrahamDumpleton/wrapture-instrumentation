@@ -76,7 +76,7 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src/wrapture_instrumentation", "tests"]
+files = ["src/wrapture_instrumentation", "tests", "demo"]
 
 [tool.ruff]
 line-length = 88
