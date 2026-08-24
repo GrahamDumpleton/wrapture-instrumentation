@@ -12,8 +12,9 @@ more to follow), each registered under the bare target name, so that
 tracing a framework is one config entry and no code.
 
 > **Status: pre-alpha.** The package is being built target by target
-> against wrapture's alpha series; nothing is published to PyPI yet.
-> Flask is the first target and covers its basics; see the table below.
+> against wrapture's alpha series, with development releases published
+> to [PyPI](https://pypi.org/project/wrapture-instrumentation/). Flask
+> is the first target and covers its basics; see the table below.
 
 ## Installation
 
