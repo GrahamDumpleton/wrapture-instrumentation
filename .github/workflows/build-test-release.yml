@@ -62,6 +62,12 @@ jobs:
           - target: flask
             suite: framework_flask
             version: "3.1.3"
+          - target: jinja2
+            suite: template_jinja2
+            version: "3.0.3"
+          - target: jinja2
+            suite: template_jinja2
+            version: "3.1.6"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

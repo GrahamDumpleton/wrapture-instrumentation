@@ -6,6 +6,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
 flask_versions := "3.0.3 3.1.3"
+jinja2_versions := "3.0.3 3.1.6"
 
 # List available targets.
 default:
@@ -52,14 +53,33 @@ test-flask-all *ARGS:
         just test-flask "${version}" {{ARGS}}
     done
 
-# Drive the shop application with the Flask instrumentation applied,
-# for verifying the results by eye: the live event stream, then the
-# reconstructed tree. The wrapture[otel] overlay carries the optional
+# Run the Jinja2 suite against one Jinja2 version, e.g. `just test-jinja2 3.0.3`.
+test-jinja2 VERSION *ARGS:
+    uv run --with "jinja2=={{VERSION}}" pytest tests/template_jinja2 {{ARGS}}
+
+# Run the Jinja2 suite against every version in jinja2_versions.
+test-jinja2-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{jinja2_versions}}; do
+        echo "=== Jinja2 ${version} ==="
+        just test-jinja2 "${version}" {{ARGS}}
+    done
+
+# Drive the shop application with the Flask and Jinja2
+# instrumentations applied together, for verifying the results by
+# eye and seeing separate instrumentations meet in one tree: the
+# live event stream, then the reconstructed tree. The wrapture[otel] overlay carries the optional
 # OpenTelemetry dependencies, so `just demo-flask --otel` also exports
 # the events as spans to a local OTLP endpoint (localhost:4318 unless
 # OTEL_EXPORTER_OTLP_ENDPOINT says otherwise).
 demo-flask *ARGS:
     uv run --with "wrapture[otel]" python -m demo.framework_flask {{ARGS}}
+
+# Drive a Jinja2 environment directly with the instrumentation applied;
+# same shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-jinja2 *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.template_jinja2 {{ARGS}}
 
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the

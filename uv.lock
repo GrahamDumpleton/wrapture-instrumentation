@@ -579,6 +579,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "flask" },
+    { name = "jinja2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -586,6 +587,7 @@ dev = [
 ]
 test = [
     { name = "flask" },
+    { name = "jinja2" },
     { name = "pytest" },
 ]
 
@@ -595,6 +597,7 @@ requires-dist = [{ name = "wrapture", specifier = ">=1.0.0a4" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "flask" },
+    { name = "jinja2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -602,5 +605,6 @@ dev = [
 ]
 test = [
     { name = "flask" },
+    { name = "jinja2" },
     { name = "pytest" },
 ]

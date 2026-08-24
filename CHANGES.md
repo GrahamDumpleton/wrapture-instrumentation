@@ -4,6 +4,14 @@
 
 In development.
 
+- Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
+  forms, sync, streamed and async, each annotated with the
+  template's own name; the loading pipeline
+  (`jinja2.load` on every get_template, `jinja2.compile` inside a
+  cold load) beneath it, behind a `loading` switch; and the render
+  context, output and template source kept out of capture or
+  truncated.
+
 - Flask (`flask`, Flask 3.x): every request records as one tree
   through the recording WSGI middleware installed at construction,
   annotated with the matched route pattern and endpoint; every view

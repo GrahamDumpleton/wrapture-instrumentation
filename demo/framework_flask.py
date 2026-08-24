@@ -1,9 +1,14 @@
-"""Drive the shop application with the Flask instrumentation applied.
+"""Drive the shop application with the Flask and Jinja2
+instrumentations applied together.
 
-The instrumentation is resolved by its entry point name, the way a
-config file finds it, and the applications are the tests' own shop
-and portal, built only after the instrumentation applies, the order
-the runner guarantees in real use. The shop requests cover every
+The instrumentations are resolved by their entry point names, the way
+a config file finds them, and the applications are the tests' own
+shop and portal, built only after the instrumentations apply, the
+order the runner guarantees in real use. Applying both is the point:
+the rendering views show one tree descending from the request through
+the view and flask.render_template into the engine's own load,
+compile and render events, different instrumentations coming
+together. The shop requests cover every
 view shape: plain views, a streaming response, a class-based view, a
 blueprint, and a view that raises (Flask answers 500 and the
 exception is noted against the request event). The portal requests
@@ -100,7 +105,7 @@ def main(arguments: list[str] | None = None) -> None:
 
     print("== live stream ==")
 
-    with wrapture.instrumentation("flask"), wrapture.timeline() as tape:
+    with wrapture.instrumentation("flask", "jinja2"), wrapture.timeline() as tape:
         from tests.framework_flask.portal import make_portal
         from tests.framework_flask.shop import make_app
         from tests.wsgi import request

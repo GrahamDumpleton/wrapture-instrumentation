@@ -40,6 +40,7 @@ Documentation = "https://wrapture.readthedocs.io"
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
 flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
+jinja2 = "wrapture_instrumentation.template_jinja2:Jinja2Instrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -61,6 +62,7 @@ version = {attr = "wrapture_instrumentation.__version__"}
 # per run by the Justfile's per-target matrix recipes.
 test = [
     "flask",
+    "jinja2",
     "pytest",
 ]
 dev = [
