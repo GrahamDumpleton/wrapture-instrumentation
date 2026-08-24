@@ -45,6 +45,33 @@ jobs:
       - name: Run tests
         run: uv run --no-default-groups --group test pytest
 
+  # Each target's suite against the other supported versions of that
+  # target, overlaid on the project environment as the Justfile's
+  # per-target recipes do; the lock's version is covered by the test
+  # job above. Keep these lists in step with the Justfile.
+  test-targets:
+    name: Test ${{ matrix.target }} ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: flask
+            suite: framework_flask
+            version: "3.0.3"
+          - target: flask
+            suite: framework_flask
+            version: "3.1.3"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run the ${{ matrix.suite }} suite against ${{ matrix.target }} ${{ matrix.version }}
+        run: uv run --no-default-groups --group test --with "${{ matrix.target }}==${{ matrix.version }}" pytest tests/${{ matrix.suite }}
+
   lint:
     name: Lint and type check
     runs-on: ubuntu-latest
@@ -67,6 +94,7 @@ jobs:
     name: Build sdist and wheel
     needs:
       - test
+      - test-targets
       - lint
     runs-on: ubuntu-latest
     steps:

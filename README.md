@@ -13,6 +13,7 @@ tracing a framework is one config entry and no code.
 
 > **Status: pre-alpha.** The package is being built target by target
 > against wrapture's alpha series; nothing is published to PyPI yet.
+> Flask is the first target and covers its basics; see the table below.
 
 ## Installation
 
@@ -70,8 +71,11 @@ $ python -m wrapture.tools instrumentation --toml
 
 | Target | Supported versions | Records | Settings |
 | ------ | ------------------ | ------- | -------- |
+| `flask` | Flask 3.x | Every request as one tree (the recording WSGI middleware installed on each application at construction), every view function beneath its request (observed as routes register, blueprints and `MethodView`s included), and the exception Flask catches on its way to a 500 noted on the request. | none yet |
 
-(No targets yet; Flask is the first, in progress.)
+The entry point name is the config's `name`; the table says what each
+instrumentation does in the current cut. Settings, further choke
+points and wider version ranges are being added target by target.
 
 ## Adding a target
 

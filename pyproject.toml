@@ -27,7 +27,7 @@ classifiers = [
 # install Flask, and whether a target is present and at a supported
 # version is checked by wrapture at apply time from the class data.
 dependencies = [
-    "wrapture>=1.0.0a3",
+    "wrapture>=1.0.0a4",
 ]
 
 [project.urls]
@@ -39,6 +39,7 @@ Documentation = "https://wrapture.readthedocs.io"
 # name the config's [[instrument]] entry uses. The group name has a
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
+flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -59,6 +60,7 @@ version = {attr = "wrapture_instrumentation.__version__"}
 # version the lock resolves; older versions of a target are overlaid
 # per run by the Justfile's per-target matrix recipes.
 test = [
+    "flask",
     "pytest",
 ]
 dev = [

@@ -2,6 +2,11 @@
 # 3.15 is in RC release phase but is expected to work.
 python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 
+# One representative release per supported minor of each target, for the
+# per-target matrix recipes below. The instrumentation's `supports` range
+# is kept honest by what these pass on.
+flask_versions := "3.0.3 3.1.3"
+
 # List available targets.
 default:
     @just --list
@@ -29,6 +34,22 @@ test-all *ARGS:
     for version in {{python_versions}}; do
         echo "=== Python ${version} ==="
         just test-python "${version}" {{ARGS}}
+    done
+
+# Each target's suite can run against a nominated version of the target,
+# overlaid on the project environment for that run, so the lock's version
+# stays the default and older versions need no environment of their own.
+# Run the Flask suite against one Flask version, e.g. `just test-flask 3.0.3`.
+test-flask VERSION *ARGS:
+    uv run --with "flask=={{VERSION}}" pytest tests/framework_flask {{ARGS}}
+
+# Run the Flask suite against every version in flask_versions.
+test-flask-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{flask_versions}}; do
+        echo "=== Flask ${version} ==="
+        just test-flask "${version}" {{ARGS}}
     done
 
 # The package depends on a released wrapture. This overlays a checkout
