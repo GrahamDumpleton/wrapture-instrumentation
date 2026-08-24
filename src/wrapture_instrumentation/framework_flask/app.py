@@ -1,6 +1,6 @@
-"""The Flask patches, at Flask's own choke points.
+"""The flask.app patches, at the Flask class's own choke points.
 
-Three bindings, all created with when=False so they are behaviour-only:
+Four bindings, all created with when=False so they are behaviour-only:
 the plumbing is not the trace, so they act without ever recording
 their own calls.
 
@@ -9,15 +9,28 @@ their own calls.
   goes, so every request records as one "request" event however the
   instance was made: module level, an application factory, several
   applications in one process.
+
 - Flask.add_url_rule substitutes wrapture.observed(view_func) as
-  routes register, so every view handler records as a "call" event
-  beneath its request, wherever the view came from: module functions,
+  routes register, labelled with the route's endpoint, so every view
+  handler records as a "call" event beneath its request under the
+  name Flask itself knows it by ("quoted", "reports.summary",
+  "catalog"), wherever the view came from: module functions,
   closures, blueprints from other modules, MethodView classes (which
-  register a generated view function). Flask captures view functions
-  into its dispatch table the moment a route registers, before any
-  observation could exist, which is why registration itself is the
-  point to intercept. observed() is idempotent, so a view registered
-  twice is not wrapped twice.
+  register a generated view function whose closure name would
+  otherwise be the label). Flask captures view functions into its
+  dispatch table the moment a route registers, before any observation
+  could exist, which is why registration itself is the point to
+  intercept. Registering the same function again hands this wrapper
+  the caller's original callable, not the proxy from last time, so
+  views do not stack observations however often they register.
+
+- Flask.preprocess_request runs once routing has matched and before
+  any user code, which makes it the moment the matched route pattern
+  and endpoint are known and the in-flight event is still the request
+  itself: the binding annotates the request event with them, giving
+  every consumer the low-cardinality grouping key the raw path is
+  not. A request that matched no route (a 404) is left alone.
+
 - Flask.handle_exception is the one place a view's exception can be
   seen after Flask catches it: wsgi_app catches around the dispatch
   and hands the exception here, which returns the 500 response, so
@@ -25,7 +38,7 @@ their own calls.
   exception against the enclosing request event with note_exception(),
   so the request shows the failure beside its status.
 
-The three are applied as one group whose remove() is registered as a
+The four are applied as one group whose remove() is registered as a
 cleanup callback with on_cleanup(), which is what lets remove(), and
 with it AppliedConfig.revert() and the instrumentation() context
 manager, take the whole thing down again.
@@ -56,10 +69,27 @@ def wrap_app(
     return outcome
 
 
+def _endpoint(args: tuple[Any, ...], kwargs: dict[str, Any], view: Any) -> str:
+    """The endpoint an add_url_rule call registers its view under.
+
+    Flask's own fallback applies: an endpoint given by keyword or as
+    the second positional argument wins, and a registration without
+    one takes the view function's name, exactly as
+    _endpoint_from_view_func does.
+    """
+
+    endpoint = kwargs.get("endpoint")
+    if endpoint is None and len(args) >= 2:
+        endpoint = args[1]
+
+    return str(endpoint) if endpoint is not None else view.__name__
+
+
 def wrap_view(
     args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    """Substitute an observed view function into an add_url_rule call.
+    """Substitute an observed view function, labelled by its endpoint,
+    into an add_url_rule call.
 
     The signature is add_url_rule(rule, endpoint=None, view_func=None,
     ...), so the view is either the view_func keyword or the third
@@ -68,11 +98,37 @@ def wrap_view(
     """
 
     if kwargs.get("view_func") is not None:
-        kwargs = dict(kwargs, view_func=wrapture.observed(kwargs["view_func"]))
+        view = kwargs["view_func"]
+        observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
+        kwargs = dict(kwargs, view_func=observed)
     elif len(args) >= 3 and args[2] is not None:
-        args = (*args[:2], wrapture.observed(args[2]), *args[3:])
+        view = args[2]
+        observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
+        args = (*args[:2], observed, *args[3:])
 
     return args, kwargs
+
+
+def annotate_route(
+    wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> Any:
+    """Annotate the in-flight request event with the matched route
+    pattern and endpoint, then run request preprocessing."""
+
+    # preprocess_request runs after routing has matched and before any
+    # user code, and the plumbing bindings record nothing of their
+    # own, so the innermost event annotate() reaches is the request
+    # itself. The route pattern is the grouping key (the raw path is
+    # high-cardinality); a request that matched no route has no
+    # url_rule and gains no annotation. annotate() is a no-op when
+    # nothing is recording.
+
+    from flask import request
+
+    if request.url_rule is not None:
+        wrapture.annotate(route=request.url_rule.rule, endpoint=request.endpoint)
+
+    return wrapped(*args, **kwargs)
 
 
 def note_failure(
@@ -94,7 +150,7 @@ def note_failure(
 
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
-    """Bind the three choke points on the Flask class found in the
+    """Bind the four choke points on the Flask class found in the
     flask.app module, apply them as one group, and register the
     group's removal as the instrumentation's cleanup."""
 
@@ -104,11 +160,14 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     registrar = wrapture.binding(module.Flask, "add_url_rule", when=False)
     registrar.on_call.transforms_args(wrap_view)
 
+    router = wrapture.binding(module.Flask, "preprocess_request", when=False)
+    router.on_call.decorates(annotate_route)
+
     handler = wrapture.binding(module.Flask, "handle_exception", when=False)
     handler.on_call.decorates(note_failure)
 
     group = wrapture.bindings(
-        constructor=constructor, registrar=registrar, handler=handler
+        constructor=constructor, registrar=registrar, router=router, handler=handler
     )
     group.apply()
 

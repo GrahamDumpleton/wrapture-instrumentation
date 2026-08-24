@@ -30,19 +30,23 @@ def test_a_request_records_one_tree_with_the_view_beneath_it(tape: Tape) -> None
     assert response.status == "200 OK"
     assert tape.tree() == (
         "GET /quote/widget (shop.wsgi_app)  -> '200 OK'\n"
-        f"  {SHOP}.quoted(item='widget')  -> <Response 29 bytes [200 OK]>"
+        "  quoted(item='widget')  -> <Response 29 bytes [200 OK]>"
     )
 
-    # The request event carries the HTTP details; the view nests
-    # beneath it as a call.
+    # The request event carries the HTTP details plus the matched
+    # route and endpoint; the view nests beneath it as a call,
+    # labelled by its endpoint with its path still locating the code.
 
     (seen, view) = tape.all
     assert seen.kind == "request"
     assert seen.label == "shop.wsgi_app"
     assert seen.data["method"] == "GET"
     assert seen.data["path"] == "/quote/widget"
+    assert seen.data["route"] == "/quote/<item>"
+    assert seen.data["endpoint"] == "quoted"
     assert seen.result == "200 OK"
     assert view.kind == "call"
+    assert view.label == "quoted"
     assert view.path == f"{SHOP}:quoted"
     assert tape.parent_of(view) is seen
 
@@ -54,10 +58,17 @@ def test_every_kind_of_view_is_observed(tape: Tape) -> None:
         request(app, "GET", path)
 
     # A plain function, a MethodView's generated view and a blueprint
-    # view each record beneath their request. (The MethodView's label
-    # is Flask's generated closure name, a scope-pass item.)
+    # view each record beneath their request, labelled by endpoint:
+    # the MethodView reads as "catalog" rather than its generated
+    # closure name, and the blueprint view carries its dotted name.
+    # The path still locates the code that ran.
 
     views = [event for event in tape.all if event.kind == "call"]
+    assert [event.label for event in views] == [
+        "index",
+        "catalog",
+        "reports.summary",
+    ]
     assert [event.path for event in views] == [
         f"{SHOP}:index",
         f"{SHOP}:View.as_view.<locals>.view",
@@ -79,13 +90,28 @@ def test_a_failing_view_is_noted_on_the_request(tape: Tape) -> None:
     assert tape.tree() == (
         "GET /quote/missing (shop.wsgi_app)  -> '500 INTERNAL SERVER ERROR'"
         "  !! KeyError\n"
-        f"  {SHOP}.quoted(item='missing')  !! KeyError"
+        "  quoted(item='missing')  !! KeyError"
     )
 
     (seen, view) = tape.all
     assert seen.exception is None
     assert [type(caught.exception) for caught in seen.caught] == [KeyError]
     assert isinstance(view.exception, KeyError)
+
+
+def test_a_request_that_matches_no_route_has_no_route_annotation(
+    tape: Tape,
+) -> None:
+    # A 404 never matched a rule, so there is no pattern to group by:
+    # the request records with its raw path and no route or endpoint
+    # keys, rather than an empty or invented value.
+
+    response = request(make_app(), "GET", "/nowhere")
+
+    assert response.status == "404 NOT FOUND"
+    (seen,) = [event for event in tape.all if event.kind == "request"]
+    assert "route" not in seen.data
+    assert "endpoint" not in seen.data
 
 
 def test_a_streaming_request_stays_open_until_the_body_closes(tape: Tape) -> None:

@@ -1,10 +1,11 @@
 """Instrumentation for Flask: request and view tracing for every
 application the process creates.
 
-This module imports only wrapture. Everything that touches Flask lives
-in the sibling hooks module, which itself imports only wrapture at top
-level, so loading this class when a config loads never imports Flask
-ahead of the hook meant to fire on its import.
+This module imports only wrapture. Everything that touches Flask
+lives in sibling submodules, one per flask module patched (app.py for
+flask.app), each importing only wrapture at top level, so loading
+this class when a config loads never imports Flask ahead of the hook
+meant to fire on its import.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from typing import Any
 
 import wrapture
 
-from . import hooks
+from . import app
 
 
 class FlaskInstrumentation(wrapture.Instrumentation):
@@ -33,4 +34,4 @@ class FlaskInstrumentation(wrapture.Instrumentation):
     def flask_app(self, name: str, module: Any) -> None:
         """Patch the Flask class's choke points once flask.app exists."""
 
-        hooks.instrument(module, self)
+        app.instrument(module, self)

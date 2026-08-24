@@ -21,11 +21,16 @@ from wrapture import Instrumentation, ObservedCallable, WSGIMiddleware, instrume
 from tests.framework_flask.shop import index, make_app, quoted
 from wrapture_instrumentation.framework_flask import FlaskInstrumentation
 
-CHOKE_POINTS = ("__init__", "add_url_rule", "handle_exception")
+CHOKE_POINTS = (
+    "__init__",
+    "add_url_rule",
+    "preprocess_request",
+    "handle_exception",
+)
 
 
 def choke_points() -> dict[str, object]:
-    """The callables Flask currently has at the three patched names.
+    """The callables Flask currently has at the patched names.
 
     add_url_rule is inherited from flask.sansio.app.App in Flask 3,
     so the lookup is getattr rather than the class's own dict; the
@@ -86,8 +91,10 @@ def test_a_rule_without_a_view_function_passes_through(
 
 def test_the_proxied_view_is_not_wrapped_twice(applied: Instrumentation) -> None:
     # Flask lets the same function register under the same endpoint
-    # again for another rule; observed() is idempotent, so the second
-    # registration does not stack a second observation.
+    # again for another rule. The second registration hands the
+    # wrapper the caller's original function, not the proxy from the
+    # first, so the fresh proxy wraps the raw view and observations
+    # never stack.
 
     app = flask.Flask("twice")
     app.add_url_rule("/a", "index", index)
