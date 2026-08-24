@@ -42,9 +42,10 @@ def test_a_cold_render_shows_the_whole_pipeline(tape: Tape) -> None:
     assert text == "<p>Hello pat</p>"
 
     (load, compiled, render) = tape.all
-    assert load.label == "jinja2.load"
-    assert compiled.label == "jinja2.compile"
-    assert render.label == "jinja2.render"
+    assert load.path == "jinja2.environment:Environment._load_template"
+    assert compiled.path == "jinja2.environment:Environment.compile"
+    assert render.path == "jinja2.environment:Template.render"
+    assert render.label is None
 
     # The compile happens inside the cold load; the render follows as
     # its own root once the template is in hand.
@@ -58,8 +59,12 @@ def test_a_warm_load_skips_the_compile(tape: Tape) -> None:
     env.get_template("page.html")
     env.get_template("page.html")
 
-    labels = [event.label for event in tape.all]
-    assert labels == ["jinja2.load", "jinja2.compile", "jinja2.load"]
+    paths = [event.path for event in tape.all]
+    assert paths == [
+        "jinja2.environment:Environment._load_template",
+        "jinja2.environment:Environment.compile",
+        "jinja2.environment:Environment._load_template",
+    ]
 
 
 def test_the_render_is_annotated_and_the_context_is_not_captured(
@@ -82,8 +87,8 @@ def test_a_string_template_compiles_without_a_load(tape: Tape) -> None:
     assert text == "9!"
 
     (compiled, render) = tape.all
-    assert compiled.label == "jinja2.compile"
-    assert render.label == "jinja2.render"
+    assert compiled.path == "jinja2.environment:Environment.compile"
+    assert render.path == "jinja2.environment:Template.render"
     assert render.data["template"] == "<template>"
 
 
@@ -106,7 +111,7 @@ def test_a_generate_records_around_the_iteration(tape: Tape) -> None:
     assert "".join(chunks) == "1\n2\n3\n"
 
     (*_, render) = tape.all
-    assert render.label == "jinja2.generate"
+    assert render.path == "jinja2.environment:Template.generate"
 
     # The chunk count is the template's output nodes (each value and
     # each newline yields), not the loop count.
@@ -134,11 +139,15 @@ def test_the_async_forms_record(tape: Tape) -> None:
     renders = [
         event
         for event in tape.all
-        if event.label in ("jinja2.render_async", "jinja2.generate_async")
+        if event.path
+        in (
+            "jinja2.environment:Template.render_async",
+            "jinja2.environment:Template.generate_async",
+        )
     ]
-    assert [event.label for event in renders] == [
-        "jinja2.render_async",
-        "jinja2.generate_async",
+    assert [event.path.rpartition(".")[2] for event in renders] == [
+        "render_async",
+        "generate_async",
     ]
     assert renders[0].result == "<16 chars>"
     assert renders[1].items == 4
@@ -151,7 +160,7 @@ def test_a_file_loaded_template_annotates_its_path(tape: Tape, tmp_path: Path) -
     env.get_template("disk.html").render()
 
     (load, *_) = tape.all
-    assert load.label == "jinja2.load"
+    assert load.path == "jinja2.environment:Environment._load_template"
     assert load.data["template"] == "disk.html"
     assert load.data["path"] == str(tmp_path / "disk.html")
 
@@ -164,4 +173,4 @@ def test_loading_off_leaves_only_the_renders() -> None:
         env = make_env()
         env.get_template("page.html").render(person="pat")
 
-    assert [event.label for event in tape.all] == ["jinja2.render"]
+    assert [event.path for event in tape.all] == ["jinja2.environment:Template.render"]

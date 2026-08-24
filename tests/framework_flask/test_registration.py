@@ -76,6 +76,14 @@ def test_the_listing_tool_describes_the_entry() -> None:
     assert "  removable: yes" in output
     assert "  settings:" in output
     assert (
+        "    ignore_paths = []       request paths not to record, as path"
+        " globs ('/health', '/static/*')" in output
+    )
+    assert (
+        "    redact = []             query string parameters to mask by name,"
+        " on top of the built-in sensitive set" in output
+    )
+    assert (
         "    lifecycle = true        observe before/after/teardown callbacks"
         " as they register" in output
     )
@@ -97,6 +105,8 @@ def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "flask"\nenabled = false' in output
+    assert "# ignore_paths = []" in output
+    assert "# redact = []" in output
     assert "# lifecycle = true" in output
     assert "# handled_errors = true" in output
     assert "# templates = true" in output

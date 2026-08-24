@@ -35,10 +35,10 @@ def test_a_config_entry_applies_and_reverts() -> None:
         with timeline() as tape:
             env.get_template("p.html").render()
 
-        assert [event.label for event in tape.all] == [
-            "jinja2.load",
-            "jinja2.compile",
-            "jinja2.render",
+        assert [event.path for event in tape.all] == [
+            "jinja2.environment:Environment._load_template",
+            "jinja2.environment:Environment.compile",
+            "jinja2.environment:Template.render",
         ]
     finally:
         applied.revert()
@@ -61,7 +61,7 @@ def test_the_listing_tool_describes_the_entry() -> None:
     assert "  modules: jinja2.environment" in output
     assert (
         "    loading = true   observe template loading and compilation"
-        " (the jinja2.load and jinja2.compile events)" in output
+        " (Environment._load_template and Environment.compile)" in output
     )
 
 

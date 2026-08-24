@@ -54,7 +54,8 @@ def test_a_rendering_view_shows_the_render_beneath_it(tape: Tape) -> None:
     assert render.arguments is not None
     assert seen.kind == "request"
     assert view.label == "hello"
-    assert render.label == "flask.render_template"
+    assert render.label is None
+    assert render.path == "flask:render_template"
     assert tape.parent_of(render) is view
 
 
@@ -81,7 +82,7 @@ def test_render_template_string_truncates_the_source(tape: Tape) -> None:
         flask.render_template_string(source, person="pat")
 
     (render,) = tape.all
-    assert render.label == "flask.render_template_string"
+    assert render.path == "flask:render_template_string"
 
     assert render.arguments is not None
     captured = render.arguments["source"]
@@ -99,14 +100,14 @@ def test_a_streamed_render_records_around_the_iteration(tape: Tape) -> None:
     assert "".join(chunks) == "1\n2\n3\n"
 
     (render,) = tape.all
-    assert render.label == "flask.stream_template"
+    assert render.path == "flask:stream_template"
     assert render.duration is not None
 
 
 def test_both_module_and_namespace_attributes_are_patched(tape: Tape) -> None:
     # The documented spelling is the flask namespace re-export; the
     # defining module works too, each records exactly one event, and
-    # both carry the same explicit label whichever path the call took.
+    # the derived path names the spelling the call took.
 
     app = make_pages()
 
@@ -114,9 +115,9 @@ def test_both_module_and_namespace_attributes_are_patched(tape: Tape) -> None:
         flask.render_template("page.html", person="a")
         flask.templating.render_template("page.html", person="b")
 
-    assert [event.label for event in tape.all] == [
-        "flask.render_template",
-        "flask.render_template",
+    assert [event.path for event in tape.all] == [
+        "flask:render_template",
+        "flask.templating:render_template",
     ]
 
 
@@ -146,7 +147,7 @@ def test_a_triggers_subset_applies_templating_alone() -> None:
         response = request(make_pages(), "GET", "/hello/pat")
 
     assert response.status == "200 OK"
-    assert [event.label for event in tape.all] == ["flask.render_template"]
+    assert [event.path for event in tape.all] == ["flask:render_template"]
 
 
 def test_removal_restores_both_attributes() -> None:

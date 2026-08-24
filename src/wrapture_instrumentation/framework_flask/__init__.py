@@ -36,6 +36,15 @@ class FlaskInstrumentation(wrapture.Instrumentation):
     # and unhandled-exception noting are the point and have no switch.
 
     settings = {
+        "ignore_paths": Setting(
+            [],
+            "request paths not to record, as path globs ('/health', '/static/*')",
+        ),
+        "redact": Setting(
+            [],
+            "query string parameters to mask by name, on top of the"
+            " built-in sensitive set",
+        ),
         "lifecycle": Setting(
             True,
             "observe before/after/teardown callbacks as they register",

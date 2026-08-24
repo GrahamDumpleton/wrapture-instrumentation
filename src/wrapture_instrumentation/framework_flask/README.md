@@ -102,8 +102,10 @@ GET /shaky (portal.wsgi_app)  -> '422 UNPROCESSABLE ENTITY'  !! ValueError  [671
   context is masked wholesale, it is arbitrary application data, and
   the rendered output is captured only as its size, so nothing a
   template is given or produces leaves the process. Deep Jinja2
-  tracing (`Template.render` itself, includes and blocks) belongs to
-  a future `template_jinja2` target.
+  tracing (`Template.render` itself and the loading pipeline)
+  belongs to the [template_jinja2](../template_jinja2/README.md)
+  target, which nests beneath these render events when both are
+  applied.
 
 - When a view raises and no handler claims the exception, Flask
   answers 500 and the exception is noted against the request event.
@@ -130,10 +132,14 @@ observed.
 The instrumentation is layered, and the optional layers have
 switches; the core (the request tree, route and endpoint annotation,
 view observation, error handler observation, and unhandled-exception
-noting) is the point of the instrumentation and is always on.
+noting) is the point of the instrumentation and is always on. Two
+settings shape what a recorded request carries rather than switching
+a layer:
 
 | Setting | Default | Controls |
 | ------- | ------- | -------- |
+| `ignore_paths` | `[]` | Request paths not to record, as path globs (`"/health"`, `"/static/*"`). A matching request runs and answers as normal but records nothing: the middleware skips the request event, and the same predicate rides on the observed views, so no stray view roots appear. Lifecycle callbacks observed under the `lifecycle` switch still record on ignored paths. |
+| `redact` | `[]` | Query string parameters to mask by name in the recorded query, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
 | `lifecycle` | `true` | Observing before/after/teardown callbacks as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the layer to switch off when the trees are noisier than they are informative. The callbacks still run; they run unobserved. |
 | `handled_errors` | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
 | `templates` | `true` | Observing template rendering. One event per render, so rarely noisy; the switch exists for apps rendering very large numbers of partials. |
@@ -143,11 +149,10 @@ Settings go in the `[[instrument]]` entry:
 ```toml
 [[instrument]]
 name = "flask"
+ignore_paths = ["/health", "/static/*"]
+redact = ["voucher"]
 lifecycle = false
 ```
-
-Planned: `ignore_paths` (path globs excluded from recording) and
-redaction of nominated view and query parameters.
 
 ## Deliberately not traced
 

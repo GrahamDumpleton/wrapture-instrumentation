@@ -64,6 +64,8 @@ manager, take the whole thing down again.
 
 from __future__ import annotations
 
+import fnmatch
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import wrapture
@@ -71,22 +73,62 @@ import wrapture
 from .common import observing_registration
 
 
-def wrap_app(
-    wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> Any:
-    """Run Flask.__init__, then install the recording middleware on the
-    new instance's wsgi_app."""
+def _declines(ignore_paths: Sequence[str]) -> Callable[..., bool] | None:
+    """The when= predicate for the ignore_paths setting, or None when
+    the setting is empty: record unless the request path matches one
+    of the globs. Shared by the middleware and the observed views, so
+    an ignored request records neither its request event nor its
+    view."""
 
-    outcome = wrapped(*args, **kwargs)
+    if not ignore_paths:
+        return None
 
-    # Label with the app's own import name, so requests read as
-    # "myapp.wsgi_app" and two apps in one process stay distinct.
+    patterns = tuple(ignore_paths)
 
-    instance.wsgi_app = wrapture.WSGIMiddleware(
-        instance.wsgi_app, label=f"{instance.name}.wsgi_app"
-    )
+    def wanted(instance: Any, args: tuple[Any, ...], kwargs: Any) -> bool:
+        # The view form of the predicate: read the path from the
+        # request context (the middleware form gets the environ
+        # directly and never reaches here). A call outside a request
+        # context is not an ignorable request; record it.
 
-    return outcome
+        from flask import has_request_context, request
+
+        if not has_request_context():
+            return True
+
+        return not any(
+            fnmatch.fnmatchcase(request.path, pattern) for pattern in patterns
+        )
+
+    return wanted
+
+
+def wrap_app(ignore_paths: Sequence[str], redact: Sequence[str]) -> Callable[..., Any]:
+    """Build the Flask.__init__ decorator that installs the recording
+    middleware on each new instance's wsgi_app, carrying the
+    ignore_paths and redact settings into it."""
+
+    when = list(ignore_paths) or None
+    policy = wrapture.redact(*redact) if redact else None
+
+    def install(
+        wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
+        outcome = wrapped(*args, **kwargs)
+
+        # Label with the app's own import name, so requests read as
+        # "myapp.wsgi_app" and two apps in one process stay distinct.
+
+        instance.wsgi_app = wrapture.WSGIMiddleware(
+            instance.wsgi_app,
+            label=f"{instance.name}.wsgi_app",
+            when=when,
+            capture_args=policy,
+        )
+
+        return outcome
+
+    return install
 
 
 def _endpoint(args: tuple[Any, ...], kwargs: dict[str, Any], view: Any) -> str:
@@ -105,28 +147,39 @@ def _endpoint(args: tuple[Any, ...], kwargs: dict[str, Any], view: Any) -> str:
     return str(endpoint) if endpoint is not None else view.__name__
 
 
-def wrap_view(
-    args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    """Substitute an observed view function, labelled by its endpoint,
-    into an add_url_rule call.
+def wrap_view(ignore_paths: Sequence[str]) -> Callable[..., Any]:
+    """Build the add_url_rule transformer that substitutes an observed
+    view function, labelled by its endpoint, into each registration.
 
     The signature is add_url_rule(rule, endpoint=None, view_func=None,
     ...), so the view is either the view_func keyword or the third
     positional argument; a registration without a view (an endpoint
-    name alone) passes through untouched.
+    name alone) passes through untouched. The ignore_paths predicate
+    rides on each observed view, so an ignored request's view goes
+    unrecorded along with its request event.
     """
 
-    if kwargs.get("view_func") is not None:
-        view = kwargs["view_func"]
-        observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
-        kwargs = dict(kwargs, view_func=observed)
-    elif len(args) >= 3 and args[2] is not None:
-        view = args[2]
-        observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
-        args = (*args[:2], observed, *args[3:])
+    when = _declines(ignore_paths)
 
-    return args, kwargs
+    def transform(
+        args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if kwargs.get("view_func") is not None:
+            view = kwargs["view_func"]
+            observed = wrapture.observed(
+                view, label=_endpoint(args, kwargs, view), when=when
+            )
+            kwargs = dict(kwargs, view_func=observed)
+        elif len(args) >= 3 and args[2] is not None:
+            view = args[2]
+            observed = wrapture.observed(
+                view, label=_endpoint(args, kwargs, view), when=when
+            )
+            args = (*args[:2], observed, *args[3:])
+
+        return args, kwargs
+
+    return transform
 
 
 def annotate_route(
@@ -172,7 +225,7 @@ def note_handled(
 
     exception = args[0] if args else kwargs.get("e")
     if exception is not None and not isinstance(exception, HTTPException):
-        wrapture.note_exception(exception, event=wrapture.current_event(kind="request"))
+        wrapture.current_event(kind="request").note_exception(exception)
 
     return outcome
 
@@ -190,7 +243,7 @@ def note_failure(
 
     exception = args[0] if args else kwargs.get("e")
     if exception is not None:
-        wrapture.note_exception(exception, event=wrapture.current_event(kind="request"))
+        wrapture.current_event(kind="request").note_exception(exception)
 
     return wrapped(*args, **kwargs)
 
@@ -200,11 +253,15 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     flask.app module, apply them as one group, and register the
     group's removal as this trigger's cleanup."""
 
+    settings = instrumentation.settings
+
     constructor = wrapture.binding(module.Flask, "__init__", when=False)
-    constructor.on_call.decorates(wrap_app)
+    constructor.on_call.decorates(
+        wrap_app(settings["ignore_paths"], settings["redact"])
+    )
 
     registrar = wrapture.binding(module.Flask, "add_url_rule", when=False)
-    registrar.on_call.transforms_args(wrap_view)
+    registrar.on_call.transforms_args(wrap_view(settings["ignore_paths"]))
 
     router = wrapture.binding(module.Flask, "preprocess_request", when=False)
     router.on_call.decorates(annotate_route)
@@ -219,12 +276,12 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     # lifecycle observation, and the handle_user_exception noting is
     # the handled-errors layer; each binds only when its switch is on.
 
-    if instrumentation.settings["lifecycle"]:
+    if settings["lifecycle"]:
         appcontext = wrapture.binding(module.Flask, "teardown_appcontext", when=False)
         appcontext.on_call.decorates(observing_registration(0, "f"))
         named["appcontext"] = appcontext
 
-    if instrumentation.settings["handled_errors"]:
+    if settings["handled_errors"]:
         user_handler = wrapture.binding(
             module.Flask, "handle_user_exception", when=False
         )

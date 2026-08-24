@@ -72,7 +72,7 @@ $ python -m wrapture.tools instrumentation --toml
 
 | Target | Supported versions | Records | Settings |
 | ------ | ------------------ | ------- | -------- |
-| [`flask`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/framework_flask/README.md) | Flask 3.x | Every request as one tree, annotated with route and endpoint; every view observed and labelled by endpoint; unhandled exceptions noted on the request. | none yet |
+| [`flask`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/framework_flask/README.md) | Flask 3.x | Every request as one tree, annotated with route and endpoint; every view observed and labelled by endpoint; template renders beneath their views; handled and unhandled failures noted on the request. | `ignore_paths`, `redact`, `lifecycle`, `handled_errors`, `templates` |
 | [`jinja2`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/template_jinja2/README.md) | Jinja2 3.x | Every render traced in all its forms (sync, async, streamed), annotated with the template name; the loading and compile pipeline beneath it; context and output kept out of capture. | `loading` |
 
 The entry point name is the config's `name`; the table summarizes

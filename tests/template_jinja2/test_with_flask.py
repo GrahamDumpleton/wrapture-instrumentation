@@ -28,14 +28,18 @@ def test_the_flask_render_nests_the_jinja2_work() -> None:
 
     assert response.status == "200 OK"
 
-    labels = [event.label or event.path for event in tape.all]
-    assert labels == [
+    # Assigned labels for the middleware and the view, derived paths
+    # for everything else: flask's namespace re-export spelling for
+    # the render, the true jinja2 locations beneath it.
+
+    names = [event.label or event.path for event in tape.all]
+    assert names == [
         "pages.wsgi_app",
         "hello",
-        "flask.render_template",
-        "jinja2.load",
-        "jinja2.compile",
-        "jinja2.render",
+        "flask:render_template",
+        "jinja2.environment:Environment._load_template",
+        "jinja2.environment:Environment.compile",
+        "jinja2.environment:Template.render",
     ]
 
     render_template = tape.all[2]

@@ -6,7 +6,7 @@ a config file finds them, and the applications are the tests' own
 shop and portal, built only after the instrumentations apply, the
 order the runner guarantees in real use. Applying both is the point:
 the rendering views show one tree descending from the request through
-the view and flask.render_template into the engine's own load,
+the view and flask:render_template into the engine's own load,
 compile and render events, different instrumentations coming
 together. The shop requests cover every
 view shape: plain views, a streaming response, a class-based view, a

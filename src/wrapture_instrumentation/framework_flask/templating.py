@@ -26,9 +26,11 @@ text, truncated) is captured, the render context is masked wholesale
 the rendered output is captured only as its size. The stream
 functions return generators, which wrapture records around the
 iteration, so a streamed render shows its item count and timing like
-any other streamed body. Both spellings of each function carry the
-same explicit label, the documented one, so an event reads
-identically whichever path the call took.
+any other streamed body. No labels are assigned: each binding's
+derived module:qualname path is the name, so an event says exactly
+which spelling the call took, flask:render_template through the
+namespace re-export or flask.templating:render_template through the
+defining module.
 """
 
 from __future__ import annotations
@@ -82,9 +84,10 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         return
 
     # The same four functions are deliberately bound in both places,
-    # under the same label, so both spellings trace identically.
-    # Anything added later that exists only in flask.templating must
-    # bind on module.templating alone, outside this loop.
+    # each under its own derived path, so both spellings trace and an
+    # event names the one the call took. Anything added later that
+    # exists only in flask.templating must bind on module.templating
+    # alone, outside this loop.
 
     named: dict[str, wrapture.Binding] = {}
 
@@ -93,7 +96,6 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             bound = wrapture.binding(
                 owner,
                 name,
-                label=f"flask.{name}",
                 capture_args=masked,
                 capture_result=masked,
             )

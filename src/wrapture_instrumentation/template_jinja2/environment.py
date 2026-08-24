@@ -10,8 +10,9 @@ trace):
   streamed render shows its chunk count and timing; render_async
   records around the await. Each render event is annotated with the
   template's own name (jinja2's "<template>" stands in for a string
-  template), so the identity is data on the event while the label
-  stays the operation.
+  template), so the identity is data on the event while the name
+  stays the derived path, jinja2.environment:Template.render and
+  its siblings.
 
 - Environment._load_template and Environment.compile are the loading
   pipeline: every get_template passes through _load_template (a
@@ -116,7 +117,6 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         bound = wrapture.binding(
             module.Template,
             name,
-            label=f"jinja2.{name}",
             capture_args=masked,
             capture_result=masked,
         )
@@ -127,7 +127,6 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         load = wrapture.binding(
             module.Environment,
             "_load_template",
-            label="jinja2.load",
             capture_args=load_policy,
             capture_result=load_policy,
         )
@@ -137,7 +136,6 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         compiled = wrapture.binding(
             module.Environment,
             "compile",
-            label="jinja2.compile",
             capture_args=compile_policy,
             capture_result=compile_policy,
         )

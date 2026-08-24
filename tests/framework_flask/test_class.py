@@ -25,10 +25,14 @@ def test_class_data() -> None:
     # (requests, routes, views, unhandled errors) have no switch.
 
     assert set(FlaskInstrumentation.settings) == {
+        "ignore_paths",
+        "redact",
         "lifecycle",
         "handled_errors",
         "templates",
     }
+    assert FlaskInstrumentation.settings["ignore_paths"].default == []
+    assert FlaskInstrumentation.settings["redact"].default == []
     assert FlaskInstrumentation.settings["lifecycle"].default is True
     assert FlaskInstrumentation.settings["handled_errors"].default is True
     assert FlaskInstrumentation.settings["templates"].default is True
@@ -48,6 +52,8 @@ def test_constructing_without_settings_works() -> None:
     instance = FlaskInstrumentation()
 
     assert instance.settings == {
+        "ignore_paths": [],
+        "redact": [],
         "lifecycle": True,
         "handled_errors": True,
         "templates": True,
@@ -70,8 +76,8 @@ def test_an_undeclared_setting_is_refused() -> None:
     # carrying any other key fails at config load rather than being
     # silently ignored.
 
-    with pytest.raises(ConfigError, match="ignore_paths"):
-        FlaskInstrumentation(ignore_paths=["/health"])
+    with pytest.raises(ConfigError, match="verbosity"):
+        FlaskInstrumentation(verbosity=2)
 
 
 def test_the_installed_flask_is_within_supports() -> None:

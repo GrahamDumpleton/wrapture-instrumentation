@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import re
 from importlib import metadata
+from pathlib import Path
 
 import pytest
 import wrapture
@@ -147,3 +148,29 @@ def test_the_listing_tool_reports_every_entry_cleanly() -> None:
     version = wrapture_instrumentation.__version__
     for point in ENTRY_POINTS:
         assert f"{point.name}  ({DISTRIBUTION} {version})" in output
+
+
+def test_the_readme_table_lists_every_target() -> None:
+    # The top README's table is the catalogue: one row per registered
+    # target, named by its entry point and linked by absolute URL to
+    # the per-target README (relative links break on PyPI), which
+    # must itself exist and ship in the package data.
+
+    root = Path(__file__).parent.parent
+    text = (root / "README.md").read_text()
+
+    for point in ENTRY_POINTS:
+        module = point.value.partition(":")[0]
+        subpath = module.replace(".", "/")
+
+        per_target = root / "src" / subpath / "README.md"
+        assert per_target.is_file(), f"{point.name} has no per-target README"
+
+        link = (
+            "https://github.com/GrahamDumpleton/wrapture-instrumentation"
+            f"/blob/develop/src/{subpath}/README.md"
+        )
+        assert f"[`{point.name}`]({link})" in text, (
+            f"{point.name} is missing from the README table or its link"
+            f" is not the absolute per-target URL"
+        )

@@ -34,7 +34,7 @@ class Jinja2Instrumentation(wrapture.Instrumentation):
         "loading": Setting(
             True,
             "observe template loading and compilation"
-            " (the jinja2.load and jinja2.compile events)",
+            " (Environment._load_template and Environment.compile)",
         ),
     }
 

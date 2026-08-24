@@ -44,12 +44,12 @@ def test_lifecycle_callbacks_record_in_request_order(tape: Tape) -> None:
     # application contexts unwind, every one nested under the request.
 
     assert labels(tape) == [
-        f"{PORTAL}.audit_request",
-        f"{PORTAL}.every_request",
+        f"{PORTAL}:audit_request",
+        f"{PORTAL}:every_request",
         "index",
-        f"{PORTAL}.stamp_response",
-        f"{PORTAL}.request_done",
-        f"{PORTAL}.context_done",
+        f"{PORTAL}:stamp_response",
+        f"{PORTAL}:request_done",
+        f"{PORTAL}:context_done",
     ]
 
     (seen,) = [event for event in tape.all if event.kind == "request"]
@@ -67,8 +67,8 @@ def test_blueprint_local_callbacks_run_only_for_their_routes(tape: Tape) -> None
     # The blueprint-local before_request records for the admin route,
     # between the app-level befores and the view.
 
-    assert f"{PORTAL}.only_admin_routes" in admin_calls
-    assert admin_calls.index(f"{PORTAL}.only_admin_routes") < admin_calls.index(
+    assert f"{PORTAL}:only_admin_routes" in admin_calls
+    assert admin_calls.index(f"{PORTAL}:only_admin_routes") < admin_calls.index(
         "admin.panel"
     )
 
@@ -86,7 +86,7 @@ def test_a_handled_exception_is_noted_and_its_handler_observed(tape: Tape) -> No
     (seen,) = [event for event in tape.all if event.kind == "request"]
     assert [type(caught.exception) for caught in seen.caught] == [ValueError]
 
-    assert f"{PORTAL}.shaky_handler" in labels(tape)
+    assert f"{PORTAL}:shaky_handler" in labels(tape)
 
 
 def test_an_http_exception_is_control_flow_and_not_noted(tape: Tape) -> None:
@@ -100,7 +100,7 @@ def test_an_http_exception_is_control_flow_and_not_noted(tape: Tape) -> None:
     (seen,) = [event for event in tape.all if event.kind == "request"]
     assert seen.caught == ()
 
-    assert f"{PORTAL}.missing_handler" in labels(tape)
+    assert f"{PORTAL}:missing_handler" in labels(tape)
 
 
 def test_an_unhandled_exception_is_noted_exactly_once(tape: Tape) -> None:
@@ -160,7 +160,7 @@ def test_lifecycle_off_keeps_error_handler_observation() -> None:
         response = request(make_portal(), "GET", "/shaky")
 
         assert response.status == "422 UNPROCESSABLE ENTITY"
-        assert labels(tape) == ["shaky", f"{PORTAL}.shaky_handler"]
+        assert labels(tape) == ["shaky", f"{PORTAL}:shaky_handler"]
 
         (seen,) = [event for event in tape.all if event.kind == "request"]
         assert [type(caught.exception) for caught in seen.caught] == [ValueError]
@@ -182,7 +182,7 @@ def test_handled_errors_off_skips_the_note_but_not_the_handler() -> None:
 
         (seen, *_) = [event for event in tape.all if event.kind == "request"]
         assert seen.caught == ()
-        assert f"{PORTAL}.shaky_handler" in labels(tape)
+        assert f"{PORTAL}:shaky_handler" in labels(tape)
 
         response = request(app, "GET", "/broken")
         assert response.status == "500 INTERNAL SERVER ERROR"

@@ -31,24 +31,26 @@ A cold render shows the whole pipeline; a warm one only the fast
 load and the render:
 
 ```
-jinja2.load(name='page.html', globals='<context>')  -> '<Template>'  [1.4ms, self 207us]
-  jinja2.compile(source='<p>Hello {{ person }}</p>', ...)  -> '<code>'  [1.2ms]
-jinja2.render(args='<context>', kwargs='<context>')  -> '<16 chars>'  [657us]
+jinja2.environment:Environment._load_template(name='page.html', globals='<context>')  -> '<Template>'  [1.4ms, self 207us]
+  jinja2.environment:Environment.compile(source='<p>Hello {{ person }}</p>', ...)  -> '<code>'  [1.2ms]
+jinja2.environment:Template.render(args='<context>', kwargs='<context>')  -> '<16 chars>'  [657us]
 ```
 
-- `Template.render`, `Template.generate` and their async forms
-  record as `jinja2.render`, `jinja2.generate`, `jinja2.render_async`
-  and `jinja2.generate_async`. A streamed render stays open while
-  its chunks are consumed and reports the chunk count and timing;
-  `render_async` records around the await. Every render event is
-  annotated with the template's own name (`template = "page.html"`,
-  or `"<template>"` for a string template), so the identity is data
-  on the event while the label stays the operation.
+Every name is the patched location itself, `module:qualname`, so an
+event pins the exact method it came from.
 
-- `Environment._load_template` records as `jinja2.load` on every
-  `get_template` (a cache hit is just a fast load), annotated with
-  the template name and, for file-backed loaders, the source path;
-  a cold load shows `jinja2.compile` nested inside it, and a string
+- `Template.render`, `Template.generate` and their async forms are
+  the renders. A streamed render stays open while its chunks are
+  consumed and reports the chunk count and timing; `render_async`
+  records around the await. Every render event is annotated with
+  the template's own name (`template = "page.html"`, or
+  `"<template>"` for a string template), so the identity is data on
+  the event while the name stays the location.
+
+- `Environment._load_template` records on every `get_template` (a
+  cache hit is just a fast load), annotated with the template name
+  and, for file-backed loaders, the source path; a cold load shows
+  the `Environment.compile` event nested inside it, and a string
   template compiles without a load.
 
 - With `enable_async=True`, Jinja2's own sync `render()` drives
@@ -66,7 +68,7 @@ jinja2.render(args='<context>', kwargs='<context>')  -> '<16 chars>'  [657us]
 
 | Setting | Default | Controls |
 | ------- | ------- | -------- |
-| `loading` | `true` | Observing the loading pipeline, the `jinja2.load` and `jinja2.compile` events. Loads fire on every `get_template`, cache hit or not, so this is the layer to switch off when render events alone tell the story. The renders have no switch; they are the point. |
+| `loading` | `true` | Observing the loading pipeline, the `Environment._load_template` and `Environment.compile` events. Loads fire on every `get_template`, cache hit or not, so this is the layer to switch off when render events alone tell the story. The renders have no switch; they are the point. |
 
 ```toml
 [[instrument]]
@@ -76,8 +78,8 @@ loading = false
 
 ## With framework_flask
 
-Nothing to configure: with both applied, `flask.render_template`
-records with the `jinja2.render` work nested beneath it, one tree
+Nothing to configure: with both applied, `flask:render_template`
+records with the `Template.render` work nested beneath it, one tree
 from the request down through the engine.
 
 ## How it patches
