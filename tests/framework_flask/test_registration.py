@@ -44,8 +44,8 @@ def test_a_config_entry_applies_and_reverts() -> None:
         assert "flask" in report
         assert f"target flask {metadata.version('flask')}" in report
         assert (
-            "applied flask.app, flask.sansio.scaffold, flask.sansio.blueprints"
-            in report
+            "applied flask.app, flask.sansio.scaffold, flask.sansio.blueprints,"
+            " flask.templating" in report
         )
         assert "removable" in report
 
@@ -82,9 +82,14 @@ def test_the_listing_tool_describes_the_entry() -> None:
         "    handled_errors = true   note an exception a registered handler"
         " absorbed against its request" in output
     )
+    assert (
+        "    templates = true        observe template rendering beneath the"
+        " view that asked for it" in output
+    )
     assert "  would register: flask.app\n" in output
     assert "  would register: flask.sansio.scaffold\n" in output
     assert "  would register: flask.sansio.blueprints\n" in output
+    assert "  would register: flask.templating\n" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:
@@ -93,3 +98,4 @@ def test_the_toml_template_carries_the_settings() -> None:
     assert '[[instrument]]\nname = "flask"\nenabled = false' in output
     assert "# lifecycle = true" in output
     assert "# handled_errors = true" in output
+    assert "# templates = true" in output

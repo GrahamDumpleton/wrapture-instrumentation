@@ -15,7 +15,7 @@ from typing import Any
 import wrapture
 from wrapture import Setting
 
-from . import app, blueprints, scaffold
+from . import app, blueprints, scaffold, templating
 
 
 class FlaskInstrumentation(wrapture.Instrumentation):
@@ -44,6 +44,10 @@ class FlaskInstrumentation(wrapture.Instrumentation):
             True,
             "note an exception a registered handler absorbed against its request",
         ),
+        "templates": Setting(
+            True,
+            "observe template rendering beneath the view that asked for it",
+        ),
     }
 
     @wrapture.instrumentation_hook("flask.app")
@@ -65,3 +69,9 @@ class FlaskInstrumentation(wrapture.Instrumentation):
         module exists."""
 
         blueprints.instrument(module, self)
+
+    @wrapture.instrumentation_hook("flask.templating")
+    def flask_templating(self, name: str, module: Any) -> None:
+        """Bind the rendering functions once flask.templating exists."""
+
+        templating.instrument(module, self)

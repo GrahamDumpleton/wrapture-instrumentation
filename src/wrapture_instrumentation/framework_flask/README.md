@@ -93,6 +93,18 @@ GET /shaky (portal.wsgi_app)  -> '422 UNPROCESSABLE ENTITY'  !! ValueError  [671
   observed the same way, so a handled failure shows the handler
   running beneath its request.
 
+- Template rendering records as its own event beneath the view that
+  asked for it: `render_template`, `render_template_string` and the
+  two `stream_template` forms, whether reached through the `flask`
+  namespace or `flask.templating` (a streamed render stays open
+  while its chunks are consumed, like any streamed body). The event
+  captures the template name (or the source, truncated); the render
+  context is masked wholesale, it is arbitrary application data, and
+  the rendered output is captured only as its size, so nothing a
+  template is given or produces leaves the process. Deep Jinja2
+  tracing (`Template.render` itself, includes and blocks) belongs to
+  a future `template_jinja2` target.
+
 - When a view raises and no handler claims the exception, Flask
   answers 500 and the exception is noted against the request event.
   When a registered handler absorbs a real exception and turns it
@@ -107,7 +119,11 @@ Applications built while the instrumentation was applied keep their
 middleware and observed views after removal; they simply record
 nothing once no sink is listening. Applications built before it
 applied are untouched, which is why the runner applies configuration
-before the application imports.
+before the application imports. The same order matters for a module
+that did `from flask import render_template` before the
+instrumentation applied: that reference is the original function and
+its renders go unobserved, where under the runner every spelling is
+observed.
 
 ## Settings
 
@@ -120,6 +136,7 @@ noting) is the point of the instrumentation and is always on.
 | ------- | ------- | -------- |
 | `lifecycle` | `true` | Observing before/after/teardown callbacks as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the layer to switch off when the trees are noisier than they are informative. The callbacks still run; they run unobserved. |
 | `handled_errors` | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
+| `templates` | `true` | Observing template rendering. One event per render, so rarely noisy; the switch exists for apps rendering very large numbers of partials. |
 
 Settings go in the `[[instrument]]` entry:
 

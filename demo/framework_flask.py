@@ -36,6 +36,9 @@ import wrapture
 SHOP_REQUESTS: tuple[tuple[str, str], ...] = (
     ("GET", "/"),
     ("GET", "/quote/widget"),
+    ("GET", "/pricing"),
+    ("GET", "/pricelist"),
+    ("GET", "/motd"),
     ("GET", "/export"),
     ("GET", "/catalog"),
     ("GET", "/reports/summary"),

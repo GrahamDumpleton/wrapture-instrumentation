@@ -24,9 +24,14 @@ def test_class_data() -> None:
     # The two category switches, both on by default; the core layers
     # (requests, routes, views, unhandled errors) have no switch.
 
-    assert set(FlaskInstrumentation.settings) == {"lifecycle", "handled_errors"}
+    assert set(FlaskInstrumentation.settings) == {
+        "lifecycle",
+        "handled_errors",
+        "templates",
+    }
     assert FlaskInstrumentation.settings["lifecycle"].default is True
     assert FlaskInstrumentation.settings["handled_errors"].default is True
+    assert FlaskInstrumentation.settings["templates"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -42,7 +47,11 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = FlaskInstrumentation()
 
-    assert instance.settings == {"lifecycle": True, "handled_errors": True}
+    assert instance.settings == {
+        "lifecycle": True,
+        "handled_errors": True,
+        "templates": True,
+    }
     assert instance.applied == ()
 
     # The trigger set the decorators declared, all still to fire on a
@@ -52,6 +61,7 @@ def test_constructing_without_settings_works() -> None:
         "flask.app",
         "flask.sansio.scaffold",
         "flask.sansio.blueprints",
+        "flask.templating",
     )
 
 
@@ -81,5 +91,6 @@ def test_the_installed_flask_is_within_supports() -> None:
                 "flask.app",
                 "flask.sansio.scaffold",
                 "flask.sansio.blueprints",
+                "flask.templating",
             )
             assert applied.pending == ()

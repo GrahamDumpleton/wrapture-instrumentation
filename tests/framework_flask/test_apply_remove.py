@@ -147,6 +147,7 @@ def test_apply_then_remove_leaves_flask_as_it_was() -> None:
             "flask.app",
             "flask.sansio.scaffold",
             "flask.sansio.blueprints",
+            "flask.templating",
         )
         assert not same(choke_points(), before)
 
