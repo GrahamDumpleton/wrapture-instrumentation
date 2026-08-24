@@ -39,9 +39,22 @@ and every view function that ran beneath it.
 
 ```
 GET /quote/widget (shop.wsgi_app)  -> '200 OK'  [507us, self 458us]
-  quoted(item='widget')  -> '<Response 29 bytes [200 OK]>'  [49us]
+  quoted(item='widget')  -> <Response 29 bytes [200 OK]>  [49us]
 GET /quote/missing (shop.wsgi_app)  -> '500 INTERNAL SERVER ERROR'  !! KeyError  [2.9ms]
   quoted(item='missing')  !! KeyError  [3us]
+```
+
+An application with lifecycle callbacks and error handlers records
+those too, in the order Flask runs them:
+
+```
+GET /shaky (portal.wsgi_app)  -> '422 UNPROCESSABLE ENTITY'  !! ValueError  [671us]
+  portal.audit_request()  -> None  [4us]
+  shaky()  !! ValueError  [2us]
+  portal.shaky_handler(error=ValueError('bad input'))  -> (<Response 22 bytes [422 ...]>, 422)  [36us]
+  portal.stamp_response(response=<Response 22 bytes [422 ...]>)  -> <Response ...>  [7us]
+  portal.request_done(exc=None)  -> None  [4us]
+  portal.context_done(exc=None)  -> None  [3us]
 ```
 
 - The request is recorded by wrapture's WSGI middleware, installed on
@@ -68,9 +81,26 @@ GET /quote/missing (shop.wsgi_app)  -> '500 INTERNAL SERVER ERROR'  !! KeyError 
   captured view arguments; the event's path still locates the actual
   code that ran.
 
-- When a view raises and Flask converts the exception into its 500
-  response, the exception is noted against the request event, so the
-  request line reports both the status it answered and the failure
+- Every lifecycle callback is observed as it registers, however it
+  registers: `before_request`, `after_request`, `teardown_request`
+  and `teardown_appcontext` on the application, the same three on a
+  blueprint (running only for its routes), and the blueprint
+  `*_app_request` variants. Each run records as a call beneath the
+  request whose handling invoked it, in Flask's own order.
+
+- Error handlers registered with `register_error_handler`, the
+  `errorhandler` decorator, or a blueprint's `app_errorhandler` are
+  observed the same way, so a handled failure shows the handler
+  running beneath its request.
+
+- When a view raises and no handler claims the exception, Flask
+  answers 500 and the exception is noted against the request event.
+  When a registered handler absorbs a real exception and turns it
+  into a response, the exception is still noted, so the failure
+  leaves its mark beside whatever status the handler chose. An
+  `HTTPException` (`abort()`, a 404) is control flow, not a failure,
+  and is never noted; its handler is still observed. Either way the
+  request line reports both the status it answered and any failure
   behind it.
 
 Applications built while the instrumentation was applied keep their
@@ -81,9 +111,26 @@ before the application imports.
 
 ## Settings
 
-None yet. Planned: `ignore_paths` (path globs excluded from
-recording), redaction of nominated view and query parameters, and
-switches for the lifecycle and handled-error layers as they land.
+The instrumentation is layered, and the optional layers have
+switches; the core (the request tree, route and endpoint annotation,
+view observation, error handler observation, and unhandled-exception
+noting) is the point of the instrumentation and is always on.
+
+| Setting | Default | Controls |
+| ------- | ------- | -------- |
+| `lifecycle` | `true` | Observing before/after/teardown callbacks as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the layer to switch off when the trees are noisier than they are informative. The callbacks still run; they run unobserved. |
+| `handled_errors` | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
+
+Settings go in the `[[instrument]]` entry:
+
+```toml
+[[instrument]]
+name = "flask"
+lifecycle = false
+```
+
+Planned: `ignore_paths` (path globs excluded from recording) and
+redaction of nominated view and query parameters.
 
 ## Deliberately not traced
 

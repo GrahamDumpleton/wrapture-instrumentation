@@ -43,7 +43,10 @@ def test_a_config_entry_applies_and_reverts() -> None:
         report = applied.report()
         assert "flask" in report
         assert f"target flask {metadata.version('flask')}" in report
-        assert "applied flask.app" in report
+        assert (
+            "applied flask.app, flask.sansio.scaffold, flask.sansio.blueprints"
+            in report
+        )
         assert "removable" in report
 
         with timeline() as tape:
@@ -66,13 +69,27 @@ def test_the_listing_tool_describes_the_entry() -> None:
     assert (
         f"  target: flask {metadata.version('flask')}, supported (>=3.0,<4)" in output
     )
-    assert "  modules: flask.app" in output
+    assert (
+        "  modules: flask.app, flask.sansio.scaffold, flask.sansio.blueprints" in output
+    )
     assert "  removable: yes" in output
-    assert "  settings: (none)" in output
-    assert "  would register: flask.app" in output
+    assert "  settings:" in output
+    assert (
+        "    lifecycle = true        observe before/after/teardown callbacks"
+        " as they register" in output
+    )
+    assert (
+        "    handled_errors = true   note an exception a registered handler"
+        " absorbed against its request" in output
+    )
+    assert "  would register: flask.app\n" in output
+    assert "  would register: flask.sansio.scaffold\n" in output
+    assert "  would register: flask.sansio.blueprints\n" in output
 
 
-def test_the_toml_template_is_the_two_line_entry() -> None:
+def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "flask"\nenabled = false' in output
+    assert "# lifecycle = true" in output
+    assert "# handled_errors = true" in output

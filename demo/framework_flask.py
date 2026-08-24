@@ -1,12 +1,15 @@
 """Drive the shop application with the Flask instrumentation applied.
 
 The instrumentation is resolved by its entry point name, the way a
-config file finds it, and the application is the tests' own shop,
-built only after the instrumentation applies, the order the runner
-guarantees in real use. A handful of requests then cover every shape
-the instrumentation handles: plain views, a streaming response, a
-class-based view, a blueprint, and a view that raises (Flask answers
-500 and the exception is noted against the request event).
+config file finds it, and the applications are the tests' own shop
+and portal, built only after the instrumentation applies, the order
+the runner guarantees in real use. The shop requests cover every
+view shape: plain views, a streaming response, a class-based view, a
+blueprint, and a view that raises (Flask answers 500 and the
+exception is noted against the request event). The portal requests
+cover the lifecycle: before/after/teardown callbacks, a handled
+exception (the handler runs and the failure is noted), and a 404
+whose handler runs without any failure being noted.
 
 Two views of the run always print: the live stream, one line as each
 operation begins and a closing line with its outcome, and the tidy
@@ -26,16 +29,25 @@ import sys
 
 import wrapture
 
-# Every route the shop registers, the failing request last so the
-# stream ends on the interesting case.
+# Every route the shop registers, the failing request last so that
+# stream ends on the interesting case; then the portal's lifecycle
+# and error handling shapes.
 
-REQUESTS: tuple[tuple[str, str], ...] = (
+SHOP_REQUESTS: tuple[tuple[str, str], ...] = (
     ("GET", "/"),
     ("GET", "/quote/widget"),
     ("GET", "/export"),
     ("GET", "/catalog"),
     ("GET", "/reports/summary"),
     ("GET", "/quote/missing"),
+)
+
+PORTAL_REQUESTS: tuple[tuple[str, str], ...] = (
+    ("GET", "/"),
+    ("GET", "/admin/panel"),
+    ("GET", "/shaky"),
+    ("GET", "/nowhere"),
+    ("GET", "/broken"),
 )
 
 
@@ -86,13 +98,17 @@ def main(arguments: list[str] | None = None) -> None:
     print("== live stream ==")
 
     with wrapture.instrumentation("flask"), wrapture.timeline() as tape:
+        from tests.framework_flask.portal import make_portal
         from tests.framework_flask.shop import make_app
         from tests.wsgi import request
 
-        app = make_app()
+        shop = make_app()
+        for method, path in SHOP_REQUESTS:
+            request(shop, method, path)
 
-        for method, path in REQUESTS:
-            request(app, method, path)
+        portal = make_portal()
+        for method, path in PORTAL_REQUESTS:
+            request(portal, method, path)
 
     print()
     print("== tree ==")

@@ -6,6 +6,9 @@ from __future__ import annotations
 import warnings
 from importlib import metadata
 
+# Imported for its side: the class's triggers fire on flask's import,
+# so the applying test below works with this file run on its own.
+import flask  # noqa: F401
 import pytest
 from wrapture import ConfigError, ConfigWarning, instrumentation
 
@@ -17,7 +20,13 @@ def test_class_data() -> None:
     assert FlaskInstrumentation.removable is True
     assert FlaskInstrumentation.supports == ">=3.0,<4"
     assert FlaskInstrumentation.requires == ()
-    assert FlaskInstrumentation.settings == {}
+
+    # The two category switches, both on by default; the core layers
+    # (requests, routes, views, unhandled errors) have no switch.
+
+    assert set(FlaskInstrumentation.settings) == {"lifecycle", "handled_errors"}
+    assert FlaskInstrumentation.settings["lifecycle"].default is True
+    assert FlaskInstrumentation.settings["handled_errors"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -33,18 +42,22 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = FlaskInstrumentation()
 
-    assert instance.settings == {}
+    assert instance.settings == {"lifecycle": True, "handled_errors": True}
     assert instance.applied == ()
 
     # The trigger set the decorators declared, all still to fire on a
     # fresh instance.
 
-    assert instance.pending == ("flask.app",)
+    assert instance.pending == (
+        "flask.app",
+        "flask.sansio.scaffold",
+        "flask.sansio.blueprints",
+    )
 
 
-def test_any_setting_is_refused_because_none_are_declared() -> None:
-    # The first cut declares no settings, so an [[instrument]] entry
-    # carrying any extra key fails at config load rather than being
+def test_an_undeclared_setting_is_refused() -> None:
+    # Only the declared switches are accepted: an [[instrument]] entry
+    # carrying any other key fails at config load rather than being
     # silently ignored.
 
     with pytest.raises(ConfigError, match="ignore_paths"):
@@ -64,5 +77,9 @@ def test_the_installed_flask_is_within_supports() -> None:
             (applied,) = record.instrumentations
 
             assert applied.target_version == metadata.version("flask")
-            assert applied.applied == ("flask.app",)
+            assert applied.applied == (
+                "flask.app",
+                "flask.sansio.scaffold",
+                "flask.sansio.blueprints",
+            )
             assert applied.pending == ()

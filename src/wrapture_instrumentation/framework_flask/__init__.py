@@ -13,8 +13,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
+from wrapture import Setting
 
-from . import app
+from . import app, blueprints, scaffold
 
 
 class FlaskInstrumentation(wrapture.Instrumentation):
@@ -30,8 +31,37 @@ class FlaskInstrumentation(wrapture.Instrumentation):
     supports = ">=3.0,<4"
     removable = True
 
+    # The category switches: which layers of the instrumentation are
+    # in play. The request tree, route annotation, view observation
+    # and unhandled-exception noting are the point and have no switch.
+
+    settings = {
+        "lifecycle": Setting(
+            True,
+            "observe before/after/teardown callbacks as they register",
+        ),
+        "handled_errors": Setting(
+            True,
+            "note an exception a registered handler absorbed against its request",
+        ),
+    }
+
     @wrapture.instrumentation_hook("flask.app")
     def flask_app(self, name: str, module: Any) -> None:
         """Patch the Flask class's choke points once flask.app exists."""
 
         app.instrument(module, self)
+
+    @wrapture.instrumentation_hook("flask.sansio.scaffold")
+    def flask_sansio_scaffold(self, name: str, module: Any) -> None:
+        """Patch Scaffold's registration methods, shared by
+        applications and blueprints, once the module exists."""
+
+        scaffold.instrument(module, self)
+
+    @wrapture.instrumentation_hook("flask.sansio.blueprints")
+    def flask_sansio_blueprints(self, name: str, module: Any) -> None:
+        """Patch Blueprint's app-level registration methods once the
+        module exists."""
+
+        blueprints.instrument(module, self)

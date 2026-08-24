@@ -1,6 +1,6 @@
 """The flask.app patches, at the Flask class's own choke points.
 
-Four bindings, all created with when=False so they are behaviour-only:
+Six bindings, all created with when=False so they are behaviour-only:
 the plumbing is not the trace, so they act without ever recording
 their own calls.
 
@@ -31,14 +31,32 @@ their own calls.
   every consumer the low-cardinality grouping key the raw path is
   not. A request that matched no route (a 404) is left alone.
 
-- Flask.handle_exception is the one place a view's exception can be
-  seen after Flask catches it: wsgi_app catches around the dispatch
-  and hands the exception here, which returns the 500 response, so
-  the request itself completes normally. The binding notes the
-  exception against the enclosing request event with note_exception(),
-  so the request shows the failure beside its status.
+- Flask.teardown_appcontext registers callbacks the way the
+  lifecycle methods on Scaffold do, but lives on the application
+  base class rather than Scaffold (blueprints have no application
+  context), so it is patched here beside the class's other methods:
+  registered callbacks are observed and record as calls beneath the
+  request whose context pop runs them.
 
-The four are applied as one group whose remove() is registered as a
+- Flask.handle_user_exception receives every exception a request
+  raises before Flask decides its fate. When it returns normally a
+  registered handler (or Flask's HTTPException handling) has turned
+  the exception into a response, and for a non-HTTPException that
+  outcome would otherwise leave no mark, so the binding notes the
+  exception against the request. An HTTPException (abort() and
+  friends) is control flow, not a failure, and is not noted; an
+  exception with no handler is re-raised out of the method and noted
+  by the handle_exception binding instead, so nothing is noted twice.
+
+- Flask.handle_exception is the one place an unhandled exception can
+  be seen after Flask catches it: wsgi_app catches around the
+  dispatch and hands the exception here, which returns the 500
+  response, so the request itself completes normally. The binding
+  notes the exception against the enclosing request event with
+  note_exception(), so the request shows the failure beside its
+  status.
+
+The six are applied as one group whose remove() is registered as a
 cleanup callback with on_cleanup(), which is what lets remove(), and
 with it AppliedConfig.revert() and the instrumentation() context
 manager, take the whole thing down again.
@@ -49,6 +67,8 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
+
+from .common import observing_registration
 
 
 def wrap_app(
@@ -131,6 +151,32 @@ def annotate_route(
     return wrapped(*args, **kwargs)
 
 
+def note_handled(
+    wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> Any:
+    """Run handle_user_exception, and when it turned a real exception
+    into a response, note the exception against the enclosing request
+    event."""
+
+    # A raise out of the wrapped call means no handler claimed the
+    # exception: it propagates to handle_exception, whose binding
+    # notes it, so letting it fly avoids a double note.
+
+    outcome = wrapped(*args, **kwargs)
+
+    # HTTPExceptions are control flow (abort(), 404s): the response
+    # status already tells that story. Anything else that came back
+    # as a response was a genuine failure a handler absorbed.
+
+    from werkzeug.exceptions import HTTPException
+
+    exception = args[0] if args else kwargs.get("e")
+    if exception is not None and not isinstance(exception, HTTPException):
+        wrapture.note_exception(exception, event=wrapture.current_event(kind="request"))
+
+    return outcome
+
+
 def note_failure(
     wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> Any:
@@ -150,9 +196,9 @@ def note_failure(
 
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
-    """Bind the four choke points on the Flask class found in the
+    """Bind the six choke points on the Flask class found in the
     flask.app module, apply them as one group, and register the
-    group's removal as the instrumentation's cleanup."""
+    group's removal as this trigger's cleanup."""
 
     constructor = wrapture.binding(module.Flask, "__init__", when=False)
     constructor.on_call.decorates(wrap_app)
@@ -163,12 +209,33 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     router = wrapture.binding(module.Flask, "preprocess_request", when=False)
     router.on_call.decorates(annotate_route)
 
+    named: dict[str, wrapture.Binding] = {
+        "constructor": constructor,
+        "registrar": registrar,
+        "router": router,
+    }
+
+    # The category settings: teardown_appcontext registration is
+    # lifecycle observation, and the handle_user_exception noting is
+    # the handled-errors layer; each binds only when its switch is on.
+
+    if instrumentation.settings["lifecycle"]:
+        appcontext = wrapture.binding(module.Flask, "teardown_appcontext", when=False)
+        appcontext.on_call.decorates(observing_registration(0, "f"))
+        named["appcontext"] = appcontext
+
+    if instrumentation.settings["handled_errors"]:
+        user_handler = wrapture.binding(
+            module.Flask, "handle_user_exception", when=False
+        )
+        user_handler.on_call.decorates(note_handled)
+        named["user_handler"] = user_handler
+
     handler = wrapture.binding(module.Flask, "handle_exception", when=False)
     handler.on_call.decorates(note_failure)
+    named["handler"] = handler
 
-    group = wrapture.bindings(
-        constructor=constructor, registrar=registrar, router=router, handler=handler
-    )
+    group = wrapture.bindings(**named)
     group.apply()
 
     instrumentation.on_cleanup(group.remove)

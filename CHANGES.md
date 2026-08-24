@@ -4,17 +4,14 @@
 
 In development.
 
-- Project skeleton: the `wrapture_instrumentation` package with its
-  version, the test-side WSGI driver, and the package-level tests
-  that keep every registered instrumentation import-light.
-
-- Flask (`flask`, Flask 3.x): every application's `wsgi_app` wrapped in
-  the recording WSGI middleware at construction, every view function
-  observed as it registers, and the exception `Flask.handle_exception`
-  receives noted against the request event. No settings yet.
-
-- Flask requests are annotated with the matched route pattern and
-  endpoint once routing resolves, the low-cardinality grouping key
-  the raw path is not, and observed views are labelled by their
-  endpoint, so a `MethodView` reads as its registered name and a
-  blueprint view by its dotted endpoint.
+- Flask (`flask`, Flask 3.x): every request records as one tree
+  through the recording WSGI middleware installed at construction,
+  annotated with the matched route pattern and endpoint; every view
+  function is observed as it registers and labelled by its endpoint
+  (blueprints and `MethodView`s included); lifecycle callbacks and
+  error handlers are observed however they register; and failures
+  are noted against the request, whether Flask answered 500 or a
+  registered handler absorbed a real exception (an `HTTPException`
+  is control flow and is not noted). Two settings switch the
+  optional layers: `lifecycle` and `handled_errors`, both on by
+  default.

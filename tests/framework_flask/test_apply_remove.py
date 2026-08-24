@@ -14,6 +14,8 @@ from collections.abc import Iterator
 
 import flask
 import flask.app
+import flask.sansio.blueprints
+import flask.sansio.scaffold
 import pytest
 import wrapture
 from wrapture import Instrumentation, ObservedCallable, WSGIMiddleware, instrumentation
@@ -21,24 +23,34 @@ from wrapture import Instrumentation, ObservedCallable, WSGIMiddleware, instrume
 from tests.framework_flask.shop import index, make_app, quoted
 from wrapture_instrumentation.framework_flask import FlaskInstrumentation
 
-CHOKE_POINTS = (
-    "__init__",
-    "add_url_rule",
-    "preprocess_request",
-    "handle_exception",
+CHOKE_POINTS: tuple[tuple[type, str], ...] = (
+    (flask.app.Flask, "__init__"),
+    (flask.app.Flask, "add_url_rule"),
+    (flask.app.Flask, "preprocess_request"),
+    (flask.app.Flask, "teardown_appcontext"),
+    (flask.app.Flask, "handle_user_exception"),
+    (flask.app.Flask, "handle_exception"),
+    (flask.sansio.scaffold.Scaffold, "before_request"),
+    (flask.sansio.scaffold.Scaffold, "after_request"),
+    (flask.sansio.scaffold.Scaffold, "teardown_request"),
+    (flask.sansio.scaffold.Scaffold, "register_error_handler"),
+    (flask.sansio.blueprints.Blueprint, "before_app_request"),
+    (flask.sansio.blueprints.Blueprint, "after_app_request"),
+    (flask.sansio.blueprints.Blueprint, "teardown_app_request"),
 )
 
 
-def choke_points() -> dict[str, object]:
-    """The callables Flask currently has at the patched names.
+def choke_points() -> dict[tuple[type, str], object]:
+    """The callables currently at every patched name, across the three
+    patched classes.
 
-    add_url_rule is inherited from flask.sansio.app.App in Flask 3,
-    so the lookup is getattr rather than the class's own dict; the
-    bindings patch the Flask class and removal restores what it
-    inherited.
+    Some are inherited (add_url_rule and teardown_appcontext come
+    from flask.sansio.app.App), so the lookup is getattr rather than
+    the class's own dict; the bindings patch the class named here and
+    removal restores what it inherited.
     """
 
-    return {name: getattr(flask.app.Flask, name) for name in CHOKE_POINTS}
+    return {(cls, name): getattr(cls, name) for cls, name in CHOKE_POINTS}
 
 
 @pytest.fixture
@@ -116,11 +128,13 @@ def test_the_construction_itself_is_not_recorded(applied: Instrumentation) -> No
     assert tape.all == []
 
 
-def same(first: dict[str, object], second: dict[str, object]) -> bool:
+def same(
+    first: dict[tuple[type, str], object], second: dict[tuple[type, str], object]
+) -> bool:
     # wrapt's wrappers compare equal to what they wrap, so restoration
     # is a question of identity, name by name.
 
-    return all(first[name] is second[name] for name in CHOKE_POINTS)
+    return all(first[key] is second[key] for key in first)
 
 
 def test_apply_then_remove_leaves_flask_as_it_was() -> None:
@@ -129,7 +143,11 @@ def test_apply_then_remove_leaves_flask_as_it_was() -> None:
     with instrumentation(FlaskInstrumentation) as record:
         (instance,) = record.instrumentations
 
-        assert instance.applied == ("flask.app",)
+        assert instance.applied == (
+            "flask.app",
+            "flask.sansio.scaffold",
+            "flask.sansio.blueprints",
+        )
         assert not same(choke_points(), before)
 
     assert same(choke_points(), before)
