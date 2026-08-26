@@ -15,7 +15,9 @@ In development.
 
 - Flask (`flask`, Flask 3.x): every request records as one tree
   through the recording WSGI middleware installed at construction,
-  annotated with the matched route pattern and endpoint; every view
+  annotated with the matched route pattern and endpoint (the route
+  is what wrapture's OpenTelemetry export names the span by, as
+  `http.route`); every view
   function is observed as it registers and labelled by its endpoint
   (blueprints and `MethodView`s included); lifecycle callbacks and
   error handlers are observed however they register; and failures

@@ -558,15 +558,15 @@ wheels = [
 
 [[package]]
 name = "wrapture"
-version = "1.0.0a5"
+version = "1.0.0a6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/76/7943a5707df38a5b78902901521c9291ddfe9f3da6200f1e98354c30b398/wrapture-1.0.0a5.tar.gz", hash = "sha256:f7e76d2b0f8249d4c0d13e57beb8c3e5b358c2cbfaf7fc2ba8abd08c94fbdff0", size = 356220, upload-time = "2026-08-24T09:14:01.951Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/ba/d1b8015bfbd5b006df1a7ab522c14e6dc93f07f9fd3577ad1bb670c07c84/wrapture-1.0.0a6.tar.gz", hash = "sha256:b6139e03e052435d6f128f223f4421a369a541c99286245fb695c18a3f4e9c61", size = 360569, upload-time = "2026-08-26T06:31:53.794Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/bb/76fbf987c685eaa17825aaf670792d42fab665a9b29cef0e3ba185cf9e92/wrapture-1.0.0a5-py3-none-any.whl", hash = "sha256:268fa3895e4ecaa1b3558a3b232f0c61e6fd058e3b04a3133d16c3a2a5e4b407", size = 224673, upload-time = "2026-08-24T09:14:00.567Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/5c/bd8a5bf67c8258af0852ddef83bed427153b78a112ad7361685110bc0880/wrapture-1.0.0a6-py3-none-any.whl", hash = "sha256:80124d21200970e6aeb40c43b13c48ed0dc2c72c2076c4de96ae3bf68a392e8a", size = 226754, upload-time = "2026-08-26T06:31:52.242Z" },
 ]
 
 [[package]]
@@ -592,7 +592,7 @@ test = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "wrapture", specifier = ">=1.0.0a5" }]
+requires-dist = [{ name = "wrapture", specifier = ">=1.0.0a6" }]
 
 [package.metadata.requires-dev]
 dev = [

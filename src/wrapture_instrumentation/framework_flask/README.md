@@ -71,7 +71,10 @@ GET /shaky (portal.wsgi_app)  -> '422 UNPROCESSABLE ENTITY'  !! ValueError  [671
   matched route pattern (`route = "/quote/<item>"`) and endpoint
   (`endpoint = "quoted"`), the low-cardinality keys to group by; the
   raw path stays as the per-request detail. A request that matched no
-  route (a 404) has neither key.
+  route (a 404) has neither key. wrapture's OpenTelemetry export
+  reads `route` as the semantic-convention `http.route` and names the
+  request span by it (`GET /quote/<item>`), so a backend groups by
+  endpoint rather than by URL.
 
 - Every view function is observed as its route registers, wherever it
   came from: plain functions, `view_func` by keyword or position,
