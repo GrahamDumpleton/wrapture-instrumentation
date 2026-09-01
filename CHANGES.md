@@ -4,8 +4,8 @@
 
 In development.
 
-- urllib (`urllib`, standard library): every request made through
-  `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
+- urllib (`urllib.request`, standard library): every request made
+  through `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
   another standard library module, records as one external leaf on
   `OpenerDirector.open`, carrying the external category's contract
   keys (method, URL without its query string, host, port, path, the

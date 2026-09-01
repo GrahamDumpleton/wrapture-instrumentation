@@ -48,7 +48,7 @@ def main(arguments: list[str] | None = None) -> None:
     print the live stream and the tree, and flush any exporters."""
 
     parser = argparse.ArgumentParser(
-        prog="demo.external_urllib",
+        prog="demo.external_urllib_request",
         description="Drive urllib against a local server with the"
         " instrumentation applied, printing the live stream and the tree.",
     )
@@ -66,11 +66,11 @@ def main(arguments: list[str] | None = None) -> None:
 
     print("== live stream ==")
 
-    with wrapture.instrumentation("urllib"), wrapture.timeline() as tape:
+    with wrapture.instrumentation("urllib.request"), wrapture.timeline() as tape:
         import urllib.error
         import urllib.request
 
-        from tests.external_urllib.server import serve
+        from tests.external_urllib_request.server import serve
 
         serving = serve()
         server = next(serving)

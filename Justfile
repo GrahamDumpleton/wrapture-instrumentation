@@ -84,7 +84,7 @@ demo-jinja2 *ARGS:
 # Drive urllib against a local server with the instrumentation applied;
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.
 demo-urllib *ARGS:
-    uv run --with "wrapture[otel]" python -m demo.external_urllib {{ARGS}}
+    uv run --with "wrapture[otel]" python -m demo.external_urllib_request {{ARGS}}
 
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the

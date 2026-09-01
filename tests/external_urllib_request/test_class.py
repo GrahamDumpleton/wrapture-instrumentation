@@ -13,11 +13,11 @@ import warnings
 import pytest
 from wrapture import ConfigError, ConfigWarning, instrumentation
 
-from wrapture_instrumentation.external_urllib import UrllibInstrumentation
+from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 
 
 def test_class_data() -> None:
-    assert UrllibInstrumentation.target == "urllib"
+    assert UrllibInstrumentation.target == "urllib.request"
     assert UrllibInstrumentation.removable is True
     assert UrllibInstrumentation.requires == ()
 
@@ -34,7 +34,7 @@ def test_class_data() -> None:
 
 def test_the_description_is_the_docstring_first_line() -> None:
     assert (UrllibInstrumentation.__doc__ or "").splitlines()[0] == (
-        "Outbound request tracing and trace propagation for urllib."
+        "Outbound request tracing and trace propagation for urllib.request."
     )
 
 

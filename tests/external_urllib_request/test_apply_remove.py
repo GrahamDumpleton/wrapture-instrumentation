@@ -8,7 +8,7 @@ import urllib.request
 import pytest
 from wrapture import instrumentation
 
-from wrapture_instrumentation.external_urllib import UrllibInstrumentation
+from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 
 
 def choke_point() -> object:

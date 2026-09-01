@@ -1,8 +1,9 @@
-# urllib instrumentation
+# urllib.request instrumentation
 
 Outbound request tracing and trace propagation for
 [urllib.request](https://docs.python.org/3/library/urllib.request.html),
-the standard library's HTTP client. Entry point name `urllib`; the
+the standard library's HTTP client. Entry point name
+`urllib.request`, the module it patches; the
 target is the standard library, so the supported range is a Python
 version range, `>=3.12`, every Python wrapture itself runs on; fully
 removable.
@@ -14,7 +15,7 @@ to hear the events):
 
 ```toml
 [[instrument]]
-name = "urllib"
+name = "urllib.request"
 
 [[sink]]
 type = "printer"
@@ -24,7 +25,7 @@ run under wrapture's runner (`python -m wrapture -m myapp`), or in a
 test through the context manager:
 
 ```python
-with wrapture.instrumentation("urllib"):
+with wrapture.instrumentation("urllib.request"):
     ...
 ```
 
@@ -87,7 +88,7 @@ status.
 
 ```toml
 [[instrument]]
-name = "urllib"
+name = "urllib.request"
 propagate = false
 redact = ["voucher"]
 ```

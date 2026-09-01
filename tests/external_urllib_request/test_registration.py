@@ -9,31 +9,31 @@ import urllib.request
 from wrapture import Config, InstrumentEntry, instrumentation, timeline
 
 from tests.conftest import DISTRIBUTION, run_tool
-from tests.external_urllib.server import Server
+from tests.external_urllib_request.server import Server
 from wrapture_instrumentation import __version__
-from wrapture_instrumentation.external_urllib import UrllibInstrumentation
+from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 
 
 def test_the_bare_name_resolves_to_the_class() -> None:
-    with instrumentation("urllib") as record:
+    with instrumentation("urllib.request") as record:
         (instance,) = record.instrumentations
 
         assert type(instance) is UrllibInstrumentation
-        assert instance.name == "urllib"
+        assert instance.name == "urllib.request"
         assert instance.distribution == DISTRIBUTION
         assert instance.description == (
-            "Outbound request tracing and trace propagation for urllib."
+            "Outbound request tracing and trace propagation for urllib.request."
         )
 
 
 def test_a_config_entry_applies_and_reverts(server: Server) -> None:
-    applied = Config(instrument=[InstrumentEntry("urllib")]).apply()
+    applied = Config(instrument=[InstrumentEntry("urllib.request")]).apply()
     try:
         report = applied.report()
-        assert "urllib" in report
+        assert "urllib.request" in report
         assert (
-            f"target urllib (standard library, python {platform.python_version()})"
-            in report
+            "target urllib.request (standard library,"
+            f" python {platform.python_version()})" in report
         )
         assert "applied urllib.request" in report
 
@@ -55,11 +55,13 @@ def test_a_config_entry_applies_and_reverts(server: Server) -> None:
 def test_the_listing_tool_describes_the_entry() -> None:
     output = run_tool("instrumentation", "--verbose")
 
-    assert f"urllib  ({DISTRIBUTION} {__version__})" in output
-    assert "  Outbound request tracing and trace propagation for urllib." in output
+    assert f"urllib.request  ({DISTRIBUTION} {__version__})" in output
     assert (
-        f"  target: urllib (standard library, python {platform.python_version()}),"
-        " supported (>=3.12)" in output
+        "  Outbound request tracing and trace propagation for urllib.request." in output
+    )
+    assert (
+        "  target: urllib.request (standard library,"
+        f" python {platform.python_version()}), supported (>=3.12)" in output
     )
     assert "  modules: urllib.request" in output
 
@@ -81,7 +83,7 @@ def test_the_listing_tool_describes_the_entry() -> None:
 def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
 
-    assert '[[instrument]]\nname = "urllib"\nenabled = false' in output
+    assert '[[instrument]]\nname = "urllib.request"\nenabled = false' in output
     assert "# leaf = true" in output
     assert "# propagate = true" in output
     assert "# redact = []" in output

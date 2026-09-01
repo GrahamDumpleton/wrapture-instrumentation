@@ -27,7 +27,7 @@ classifiers = [
 # install Flask, and whether a target is present and at a supported
 # version is checked by wrapture at apply time from the class data.
 dependencies = [
-    "wrapture>=1.0.0a15",
+    "wrapture>=1.0.0a16",
 ]
 
 [project.urls]
@@ -41,7 +41,7 @@ Documentation = "https://wrapture.readthedocs.io"
 [project.entry-points."wrapture.instrumentation"]
 flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
 jinja2 = "wrapture_instrumentation.template_jinja2:Jinja2Instrumentation"
-urllib = "wrapture_instrumentation.external_urllib:UrllibInstrumentation"
+"urllib.request" = "wrapture_instrumentation.external_urllib_request:UrllibInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

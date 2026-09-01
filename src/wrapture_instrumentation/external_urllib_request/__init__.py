@@ -1,5 +1,5 @@
-"""Instrumentation for urllib: every outbound request made through
-urllib.request recorded as an external call, carrying the current
+"""Instrumentation for urllib.request: every outbound request made
+through it recorded as an external call, carrying the current
 trace identity onward in its headers.
 
 This module imports only wrapture. Everything that touches urllib
@@ -20,15 +20,15 @@ from . import request
 
 
 class UrllibInstrumentation(wrapture.Instrumentation):
-    """Outbound request tracing and trace propagation for urllib."""
+    """Outbound request tracing and trace propagation for urllib.request."""
 
-    description = "Outbound request tracing and trace propagation for urllib."
+    description = "Outbound request tracing and trace propagation for urllib.request."
 
-    # urllib is part of the standard library, so its version is the
-    # interpreter's and supports is a Python version range: every
-    # Python wrapture itself runs on.
+    # The target is the standard library module the class patches, so
+    # its version is the interpreter's and supports is a Python version
+    # range: every Python wrapture itself runs on.
 
-    target = "urllib"
+    target = "urllib.request"
     supports = ">=3.12"
     removable = True
 
