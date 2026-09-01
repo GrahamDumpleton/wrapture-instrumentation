@@ -4,6 +4,20 @@
 
 In development.
 
+- urllib (`urllib`, standard library): every request made through
+  `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
+  another standard library module, records as one external leaf on
+  `OpenerDirector.open`, carrying the external category's contract
+  keys (method, URL without its query string, host, port, path, and
+  the status whether returned or raised as an `HTTPError`); a
+  redirect is one event named by the URL asked for. The trace
+  identity from `wrapture.trace_headers()` is added to every
+  request's headers, hop by hop, leaving a header the application
+  set alone. The query string is never recorded, the body reduces to
+  its size and the response to its type. Two settings, both on by
+  default: `leaf` (off to see the nested opens and anything
+  instrumented beneath) and `propagate`.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline

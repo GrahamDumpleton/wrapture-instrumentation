@@ -41,6 +41,7 @@ Documentation = "https://wrapture.readthedocs.io"
 [project.entry-points."wrapture.instrumentation"]
 flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
 jinja2 = "wrapture_instrumentation.template_jinja2:Jinja2Instrumentation"
+urllib = "wrapture_instrumentation.external_urllib:UrllibInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

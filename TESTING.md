@@ -145,7 +145,9 @@ recipe for it in the Justfile (`just test-flask 3.0.3`) and a list of
 versions that `just test-flask-all` loops over; the CI workflow runs
 the same matrix. A test in each target's suite asserts the installed
 target satisfies `supports`, so a matrix entry outside the range
-fails loudly rather than passing vacuously.
+fails loudly rather than passing vacuously. A standard library target
+(`urllib`) has no version of its own to overlay and no `supports`
+range; the Python version matrix is its coverage.
 
 ## Testing against unreleased wrapture
 

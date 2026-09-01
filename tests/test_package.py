@@ -113,9 +113,16 @@ def test_loading_a_class_imports_no_target(point: metadata.EntryPoint) -> None:
 
     targets = sorted({other.load().target for other in ENTRY_POINTS})
 
+    # wrapture is always imported before any class loads, and its own
+    # imports are not the class's doing: it pulls in urllib.parse,
+    # which sits under the standard library target urllib. The
+    # snapshot is taken after it, as wrapture's own check effectively
+    # does.
+
     appeared = run_snippet(
         "import sys\n"
         "from importlib import metadata\n"
+        "import wrapture\n"
         "before = set(sys.modules)\n"
         f"(point,) = [p for p in metadata.entry_points(group={point.group!r})"
         f" if p.name == {point.name!r} and p.value == {point.value!r}]\n"
