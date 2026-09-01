@@ -31,6 +31,7 @@ In development.
   settings switch the optional layers, all on by default:
   `lifecycle`, `handled_errors` and `templates`; two more shape what
   a recorded request carries: `ignore_paths` (path globs whose
-  requests record nothing, request and view alike) and `redact`
+  requests record nothing at all, request and everything beneath it
+  alike) and `redact`
   (query parameters masked by name on top of the built-in sensitive
   set).

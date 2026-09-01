@@ -141,7 +141,7 @@ a layer:
 
 | Setting | Default | Controls |
 | ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`"/health"`, `"/static/*"`). A matching request runs and answers as normal but records nothing: the middleware skips the request event, and the same predicate rides on the observed views, so no stray view roots appear. Lifecycle callbacks observed under the `lifecycle` switch still record on ignored paths. |
+| `ignore_paths` | `[]` | Request paths not to record, as path globs (`"/health"`, `"/static/*"`). A matching request runs and answers as normal but records nothing at all: the request event is skipped and everything beneath it is silenced for the request's whole extent, its view, lifecycle callbacks, error handlers and template renders included, so no stray roots appear. It is wrapture's `filter_requests(ignore={"path": [...]})` with `tree=True` on the middleware. |
 | `redact` | `[]` | Query string parameters to mask by name in the recorded query, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
 | `lifecycle` | `true` | Observing before/after/teardown callbacks as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the layer to switch off when the trees are noisier than they are informative. The callbacks still run; they run unobserved. |
 | `handled_errors` | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
@@ -166,8 +166,8 @@ lifecycle = false
 - Flask signals: blinker plumbing; bind the receivers ad hoc with
   wrapture if you need them.
 - `jsonify`, `send_file`, `send_static_file`: response plumbing;
-  static file traffic is better excluded wholesale once
-  `ignore_paths` lands.
+  static file traffic is better excluded wholesale with
+  `ignore_paths`.
 
 ## How it patches
 

@@ -12,7 +12,8 @@ from wrapture_instrumentation.framework_flask import FlaskInstrumentation
 
 
 def make_probe() -> flask.Flask:
-    """An application with a health endpoint beside a working route."""
+    """An application with a health endpoint beside a working route,
+    and a lifecycle callback that runs on every request."""
 
     app = flask.Flask("probe")
 
@@ -22,6 +23,10 @@ def make_probe() -> flask.Flask:
     def work() -> str:
         return "done"
 
+    def stamp() -> None:
+        return None
+
+    app.before_request(stamp)
     app.add_url_rule("/health", "health", health)
     app.add_url_rule("/static/<name>", "asset", lambda name: name)
     app.add_url_rule("/work", "work", work)
@@ -30,10 +35,10 @@ def make_probe() -> flask.Flask:
 
 
 def test_ignored_paths_record_nothing_and_still_answer() -> None:
-    # An ignored request leaves no events at all: the middleware skips
-    # the request event and the same predicate rides on the observed
-    # view, so neither shows up as a stray root. The application still
-    # runs and answers.
+    # An ignored request leaves no events at all: the middleware's
+    # filter declines the request with tree=True, so the view and the
+    # lifecycle callback beneath it are silenced rather than left as
+    # stray roots. The application still runs and answers.
 
     with (
         instrumentation(FlaskInstrumentation, ignore_paths=["/health", "/static/*"]),
@@ -53,6 +58,7 @@ def test_ignored_paths_record_nothing_and_still_answer() -> None:
 
     assert [(event.kind, event.label or event.path) for event in tape.all] == [
         ("request", "probe.wsgi_app"),
+        ("call", f"{__name__}:make_probe.<locals>.stamp"),
         ("call", "work"),
     ]
 
@@ -67,7 +73,7 @@ def test_redact_masks_named_query_parameters() -> None:
     ):
         request(make_probe(), "GET", "/work", query="voucher=SECRET50&limit=5&token=t")
 
-    (seen, _) = tape.all
+    seen = tape.all[0]
     assert seen.data["query"] == "voucher=<redacted>&limit=5&token=<redacted>"
     assert "SECRET50" not in repr(seen.data)
 
@@ -101,6 +107,6 @@ def test_defaults_ignore_nothing_and_redact_only_the_built_ins() -> None:
     with instrumentation(FlaskInstrumentation), timeline() as tape:
         request(make_probe(), "GET", "/health", query="voucher=v&api_key=k")
 
-    (seen, _) = tape.all
+    seen = tape.all[0]
     assert seen.data["path"] == "/health"
     assert seen.data["query"] == "voucher=v&api_key=<redacted>"
