@@ -85,19 +85,32 @@ def test_the_default_timeout_is_not_captured_as_an_object(
     assert arguments_of(only(tape))["timeout"] == "<default>"
 
 
-def test_the_query_string_is_never_recorded(server: Server, tape: Tape) -> None:
+def test_the_query_is_recorded_apart_from_the_url_with_secrets_masked(
+    server: Server, tape: Tape
+) -> None:
     urllib.request.urlopen(f"{server.url}/ok?token=hunter2&page=3").close()
 
     event = only(tape)
     assert event.data["url"] == f"{server.url}/ok"
-    assert "query" not in event.data
+    assert event.data["query"] == "token=<redacted>&page=3"
+    assert arguments_of(event)["fullurl"] == f"{server.url}/ok"
     assert "hunter2" not in repr(event.arguments)
     assert "hunter2" not in repr(event.data)
 
     # The server still received the query untouched; only the record
-    # is without it.
+    # is masked.
 
     assert server.received[0].path == "/ok?token=hunter2&page=3"
+
+
+def test_redact_masks_further_query_parameters_by_name(server: Server) -> None:
+    with (
+        instrumentation(UrllibInstrumentation, redact=["voucher"]),
+        timeline() as tape,
+    ):
+        urllib.request.urlopen(f"{server.url}/ok?voucher=SAVE10&page=3").close()
+
+    assert only(tape).data["query"] == "voucher=<redacted>&page=3"
 
 
 def test_a_post_records_its_method_and_the_body_by_size(

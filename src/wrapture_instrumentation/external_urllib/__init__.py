@@ -24,11 +24,12 @@ class UrllibInstrumentation(wrapture.Instrumentation):
 
     description = "Outbound request tracing and trace propagation for urllib."
 
-    # urllib is part of the standard library, so there is no
-    # distribution version for supports to gate on; the API patched
-    # here is the same on every Python wrapture runs on.
+    # urllib is part of the standard library, so its version is the
+    # interpreter's and supports is a Python version range: every
+    # Python wrapture itself runs on.
 
     target = "urllib"
+    supports = ">=3.12"
     removable = True
 
     settings = {
@@ -42,6 +43,11 @@ class UrllibInstrumentation(wrapture.Instrumentation):
             True,
             "add the current trace identity to each request's headers"
             " so the service called can join the trace",
+        ),
+        "redact": Setting(
+            [],
+            "query string parameters to mask by name, on top of the"
+            " built-in sensitive set",
         ),
     }
 

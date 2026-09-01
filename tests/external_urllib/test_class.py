@@ -1,11 +1,12 @@
 """The class as wrapture reads it: its data, its settings, and that a
-standard library target applies with no version to gate on."""
+standard library target's version is the interpreter's."""
 
 from __future__ import annotations
 
 # urllib.request is imported for its side: the class's trigger fires on
 # its import, so the applying test below works with this file run on
 # its own.
+import platform
 import urllib.request  # noqa: F401
 import warnings
 
@@ -20,14 +21,15 @@ def test_class_data() -> None:
     assert UrllibInstrumentation.removable is True
     assert UrllibInstrumentation.requires == ()
 
-    # The standard library has no distribution version, so there is
-    # no supports range.
+    # A standard library target's version is the interpreter's, so
+    # supports is a Python version range.
 
-    assert UrllibInstrumentation.supports == ""
+    assert UrllibInstrumentation.supports == ">=3.12"
 
-    assert set(UrllibInstrumentation.settings) == {"leaf", "propagate"}
+    assert set(UrllibInstrumentation.settings) == {"leaf", "propagate", "redact"}
     assert UrllibInstrumentation.settings["leaf"].default is True
     assert UrllibInstrumentation.settings["propagate"].default is True
+    assert UrllibInstrumentation.settings["redact"].default == []
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -39,7 +41,7 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = UrllibInstrumentation()
 
-    assert instance.settings == {"leaf": True, "propagate": True}
+    assert instance.settings == {"leaf": True, "propagate": True, "redact": []}
     assert instance.applied == ()
     assert instance.pending == ("urllib.request",)
 
@@ -54,13 +56,13 @@ def test_a_setting_of_the_wrong_type_is_refused() -> None:
         UrllibInstrumentation(leaf="no")
 
 
-def test_the_standard_library_target_applies_without_a_version() -> None:
+def test_the_running_python_is_within_supports() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error", ConfigWarning)
 
         with instrumentation(UrllibInstrumentation) as record:
             (applied,) = record.instrumentations
 
-            assert applied.target_version is None
+            assert applied.target_version == platform.python_version()
             assert applied.applied == ("urllib.request",)
             assert applied.pending == ()

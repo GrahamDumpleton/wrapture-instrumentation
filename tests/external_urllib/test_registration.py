@@ -3,6 +3,7 @@ and what the listing tool says about it."""
 
 from __future__ import annotations
 
+import platform
 import urllib.request
 
 from wrapture import Config, InstrumentEntry, instrumentation, timeline
@@ -30,7 +31,10 @@ def test_a_config_entry_applies_and_reverts(server: Server) -> None:
     try:
         report = applied.report()
         assert "urllib" in report
-        assert "target urllib (no version)" in report
+        assert (
+            f"target urllib (standard library, python {platform.python_version()})"
+            in report
+        )
         assert "applied urllib.request" in report
 
         with timeline() as tape:
@@ -53,6 +57,10 @@ def test_the_listing_tool_describes_the_entry() -> None:
 
     assert f"urllib  ({DISTRIBUTION} {__version__})" in output
     assert "  Outbound request tracing and trace propagation for urllib." in output
+    assert (
+        f"  target: urllib (standard library, python {platform.python_version()}),"
+        " supported (>=3.12)" in output
+    )
     assert "  modules: urllib.request" in output
 
     # The listing pads the setting names into a column, so the name
@@ -69,10 +77,6 @@ def test_the_listing_tool_describes_the_entry() -> None:
         " service called can join the trace" in output
     )
 
-    # The target line is not asserted: wrapture reads a target's version
-    # from distribution metadata, which the standard library has none
-    # of, and currently describes that as not installed.
-
 
 def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
@@ -80,3 +84,4 @@ def test_the_toml_template_carries_the_settings() -> None:
     assert '[[instrument]]\nname = "urllib"\nenabled = false' in output
     assert "# leaf = true" in output
     assert "# propagate = true" in output
+    assert "# redact = []" in output

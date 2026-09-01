@@ -27,7 +27,7 @@ classifiers = [
 # install Flask, and whether a target is present and at a supported
 # version is checked by wrapture at apply time from the class data.
 dependencies = [
-    "wrapture>=1.0.0a13",
+    "wrapture>=1.0.0a15",
 ]
 
 [project.urls]

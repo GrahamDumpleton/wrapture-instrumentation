@@ -8,15 +8,19 @@ In development.
   `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
   another standard library module, records as one external leaf on
   `OpenerDirector.open`, carrying the external category's contract
-  keys (method, URL without its query string, host, port, path, and
-  the status whether returned or raised as an `HTTPError`); a
-  redirect is one event named by the URL asked for. The trace
-  identity from `wrapture.trace_headers()` is added to every
-  request's headers, hop by hop, leaving a header the application
-  set alone. The query string is never recorded, the body reduces to
-  its size and the response to its type. Two settings, both on by
-  default: `leaf` (off to see the nested opens and anything
-  instrumented beneath) and `propagate`.
+  keys (method, URL without its query string, host, port, path, the
+  query with secrets masked, and the status whether returned or
+  raised as an `HTTPError`); a redirect is one event named by the
+  URL asked for. The trace identity from `wrapture.trace_headers()`
+  is added to every request's headers, hop by hop, leaving a header
+  the application set alone. The query is recorded through
+  `wrapture.capture_query()`, so the built-in sensitive names are
+  always masked, the body reduces to its size and the response to
+  its type. Three settings: `leaf` (off to see the nested opens and
+  anything instrumented beneath) and `propagate`, both on by
+  default, and `redact` (query parameters masked by name on top of
+  the built-in set). Supports Python 3.12 and later, the standard
+  library's version being the interpreter's.
 
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the

@@ -2,10 +2,10 @@
 
 Outbound request tracing and trace propagation for
 [urllib.request](https://docs.python.org/3/library/urllib.request.html),
-the standard library's HTTP client. Entry point name `urllib`; no
-supported-version range, since the standard library carries no
-distribution version and the API patched is the same on every Python
-wrapture runs on; fully removable.
+the standard library's HTTP client. Entry point name `urllib`; the
+target is the standard library, so the supported range is a Python
+version range, `>=3.12`, every Python wrapture itself runs on; fully
+removable.
 
 ## Enabling it
 
@@ -41,11 +41,12 @@ urllib.request:OpenerDirector.open(fullurl='http://127.0.0.1:8000/orders', data=
 The name is the patched location, `module:qualname`, and the event
 is what makes it an external call: its category is `external`, and
 its data carries the keys that category promises. Each event holds
-`method`, `url` (with the query string removed), `host`, `port` and
-`path` from the request, and `status` from the response, whether
-that came back normally or as the `HTTPError` urllib raises for a
-4xx or 5xx. A request that never got a status (a refused connection,
-a name that does not resolve) records the error and no status.
+`method`, `url` (with the query string removed), `host`, `port`,
+`path` and `query` from the request, and `status` from the response,
+whether that came back normally or as the `HTTPError` urllib raises
+for a 4xx or 5xx. A request that never got a status (a refused
+connection, a name that does not resolve) records the error and no
+status.
 
 - The event is a terminal node of the tree, a leaf: it covers
   everything the open did, and nothing beneath it records. A
@@ -66,12 +67,15 @@ a name that does not resolve) records the error and no status.
   header the application set itself is left alone.
 
 - The capture policy is deliberate about sensitive data: the query
-  string is never recorded, not in the data and not in the captured
-  arguments, since it is where tokens and credentials most often
-  travel; the request body reduces to its size and the response to
-  its type. URLs without their query, hostnames and paths pass; they
-  name where the request went, not what it carried. The
-  application's own request headers are not recorded.
+  string is recorded once, as `query`, in the form wrapture's request
+  middlewares record it inbound, with the built-in sensitive names
+  (passwords, tokens, keys, session ids and signatures) always
+  masked and the `redact` setting's names masked on top; the
+  captured `fullurl` argument and the `url` key carry no query at
+  all. The request body reduces to its size and the response to its
+  type. URLs without their query, hostnames and paths pass; they name
+  where the request went, not what it carried. The application's own
+  request headers are not recorded.
 
 ## Settings
 
@@ -79,11 +83,13 @@ a name that does not resolve) records the error and no status.
 | ------- | ------- | -------- |
 | `leaf` | `true` | Whether each open is a terminal node. Off, the nested open behind a redirect or an authentication retry records as a child of the outer open, and anything else instrumented beneath it shows too, for looking at what urllib itself did. |
 | `propagate` | `true` | Whether the trace identity is added to each request's headers. Off when calling services that should not see it, or when the application manages its own trace headers. Recording is unaffected. |
+| `redact` | `[]` | Query string parameters to mask by name in the recorded `query`, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the server; only the recording is masked. |
 
 ```toml
 [[instrument]]
 name = "urllib"
 propagate = false
+redact = ["voucher"]
 ```
 
 ## With a framework instrumentation

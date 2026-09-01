@@ -15,12 +15,14 @@ afterwards on the response and is not part of it.
 
 The event carries the external category's contract keys, filled
 from the Request the opener is handed: method, url (the query string
-stripped), host, port and path, then status from the response or
-from the HTTPError urllib raises for a 4xx or 5xx. The query string
-is deliberately not recorded anywhere, not as data and not in the
-captured arguments, since it is where credentials and tokens most
-often travel; the request body reduces to its size and the response
-to its type.
+stripped), host, port, path and query, then status from the response
+or from the HTTPError urllib raises for a 4xx or 5xx. The query is
+recorded as wrapture.capture_query() gives it, the same form the
+request middlewares record inbound: the built-in sensitive names
+masked whatever else is said, and the redact setting's names masked
+on top. The captured arguments show the URL without its query, so
+the query appears in one place, protected; the request body reduces
+to its size and the response to its type.
 
 Propagation is the other half: the current trace identity, from
 wrapture.trace_headers(), is added to the request's headers before
@@ -94,10 +96,10 @@ def without_query(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
 
 
-def describe(request: Any) -> dict[str, Any]:
+def describe(request: Any, policy: Any) -> dict[str, Any]:
     """The external contract keys a Request yields before it is sent:
-    method and url always, host, port and path where the URL has
-    them."""
+    method and url always, host, port, path and query where the URL
+    has them, the query recorded through the capture policy."""
 
     from urllib.parse import urlsplit
 
@@ -128,6 +130,9 @@ def describe(request: Any) -> dict[str, Any]:
     if parts.path:
         data["path"] = parts.path
 
+    if parts.query:
+        data["query"] = wrapture.capture_query(parts.query, policy)
+
     return data
 
 
@@ -146,6 +151,12 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     register its removal as this trigger's cleanup."""
 
     settings = instrumentation.settings
+
+    # The query policy: redact() with the setting's names, or the
+    # reference level, either way on top of the built-in sensitive set.
+
+    names = tuple(settings["redact"])
+    policy: Any = wrapture.redact(*names) if names else "reference"
 
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -184,7 +195,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         recording = not (nested and settings["leaf"])
 
         if recording:
-            wrapture.annotate(**describe(target))
+            wrapture.annotate(**describe(target, policy))
 
         if "fullurl" in kwargs:
             kwargs = dict(kwargs, fullurl=target)
