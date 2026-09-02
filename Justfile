@@ -114,6 +114,12 @@ demo-wsgiref *ARGS:
 demo-werkzeug *ARGS:
     uv run --with "wrapture[otel]" python -m demo.server_werkzeug {{ARGS}}
 
+# Drive sqlite3 with the instrumentation applied, with and without SQL
+# text recording; same shape as demo-flask, --otel exports to a local
+# OTLP endpoint.
+demo-sqlite3 *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.database_sqlite3 {{ARGS}}
+
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
 # run, for iterating against unreleased wrapture changes without

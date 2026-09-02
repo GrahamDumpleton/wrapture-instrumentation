@@ -114,6 +114,23 @@ In development.
   its wrapper for its own lifetime. Two settings: `ignore_paths`
   and `redact`, as on the wsgiref target. Supports werkzeug 3.x.
 
+- sqlite3 (`sqlite3`, standard library): every query and transaction
+  boundary records as one database leaf. The connection and cursor
+  types are C types no patch can touch, so the `connect` factories
+  (both the `sqlite3` and `sqlite3.dbapi2` spellings) are bound and
+  each connection comes back wrapped in a recording proxy, cursors
+  included, every event labelled with the sqlite3 name it stands
+  for. Recorded: the connect, the execute family on cursors and the
+  connection's shortcut forms, `commit`, `rollback`, and the
+  connection's commit-or-rollback context manager, its exit saying
+  which it performed. Every event carries `system` (`sqlite`) and
+  `operation` (the SQL's leading keyword, or CONNECT, COMMIT,
+  ROLLBACK), the database contract the OpenTelemetry export maps to
+  `db.*` attributes. Bound parameters are never recorded; the SQL
+  text is recorded only behind the `statement` setting, off by
+  default, and reduces to its length otherwise. Fetching is not
+  recorded. Supports Python 3.12 and later.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline
