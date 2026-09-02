@@ -86,6 +86,11 @@ demo-jinja2 *ARGS:
 demo-urllib *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_urllib_request {{ARGS}}
 
+# Show the http.client wire layer beneath urllib.request with its leaf
+# switched off, then standalone; --otel exports to a local OTLP endpoint.
+demo-http-client *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_http_client {{ARGS}}
+
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
 # run, for iterating against unreleased wrapture changes without

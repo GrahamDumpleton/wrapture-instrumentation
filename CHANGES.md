@@ -22,6 +22,19 @@ In development.
   the built-in set). Supports Python 3.12 and later, the standard
   library's version being the interpreter's.
 
+- http.client (`http.client`, standard library): the wire layer
+  beneath urllib, urllib3 and xmlrpc.client, recorded phase by phase
+  as plain events: `connect` nested inside the phase that first
+  touched the socket, `putrequest` with the query string masked,
+  `endheaders` with the body by size, `getresponse` annotated with
+  the status. A debugging aid rather than default instrumentation:
+  beneath a higher-level client's leaf event nothing records, so it
+  pairs with switching that client to `leaf = false`; standalone
+  http.client use records with no switch. One setting: `redact`
+  (query parameters masked by name on top of the built-in set). No
+  trace propagation at this layer; that belongs to the client above.
+  Supports Python 3.12 and later.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline

@@ -70,7 +70,7 @@ def main(arguments: list[str] | None = None) -> None:
         import urllib.error
         import urllib.request
 
-        from tests.external_urllib_request.server import serve
+        from tests.httpserver import serve
 
         serving = serve()
         server = next(serving)

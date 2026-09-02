@@ -10,7 +10,7 @@ import urllib.request
 import wrapture
 from wrapture import Tape, instrumentation, timeline
 
-from tests.external_urllib_request.server import Server
+from tests.httpserver import Server
 from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 
 TRACEPARENT = re.compile(r"^00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}$")

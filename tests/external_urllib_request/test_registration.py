@@ -9,7 +9,7 @@ import urllib.request
 from wrapture import Config, InstrumentEntry, instrumentation, timeline
 
 from tests.conftest import DISTRIBUTION, run_tool
-from tests.external_urllib_request.server import Server
+from tests.httpserver import Server
 from wrapture_instrumentation import __version__
 from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 

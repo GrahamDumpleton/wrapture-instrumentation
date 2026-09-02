@@ -1,5 +1,5 @@
-"""A local HTTP server for the urllib suite to make real requests
-against, recording what each request arrived with.
+"""A local HTTP server for the HTTP client suites to make real
+requests against, recording what each request arrived with.
 
 Real requests over a loopback socket are the honest test of a client
 instrumentation: what the opener does with a redirect, an error
@@ -51,6 +51,12 @@ class Server:
 
 def _handler(server: Server) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
+        # HTTP/1.1, so a connection is reusable and a suite can see
+        # what a kept-alive exchange records; every reply carries a
+        # Content-Length, which keep-alive needs.
+
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, format: str, *args: Any) -> None:
             pass
 

@@ -8,7 +8,7 @@ from collections.abc import Iterator
 import pytest
 from wrapture import Tape, instrumentation, timeline
 
-from tests.external_urllib_request.server import Server, serve
+from tests.httpserver import Server, serve
 from wrapture_instrumentation.external_urllib_request import UrllibInstrumentation
 
 
