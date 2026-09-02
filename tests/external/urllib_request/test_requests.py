@@ -125,7 +125,11 @@ def test_a_post_records_its_method_and_the_body_by_size(
     assert event.data["method"] == "POST"
     assert event.data["status"] == 200
     assert arguments_of(event)["data"] == f"<{len(body)} bytes>"
-    assert "4111" not in repr(event.arguments)
+
+    # The full card number, not a prefix: a four-digit fragment can
+    # legitimately appear inside the server's ephemeral port.
+
+    assert "4111111111111111" not in repr(event.arguments)
 
 
 def test_a_request_object_supplies_its_own_method(server: Server, tape: Tape) -> None:

@@ -123,7 +123,11 @@ def test_a_body_is_recorded_by_size(server: Server, tape: Tape) -> None:
     event = of_path(tape, ENDHEADERS)
     assert event.arguments is not None
     assert event.arguments["message_body"] == f"<{len(body)} bytes>"
-    assert "4111" not in repr(event.arguments)
+
+    # The full card number, not a prefix: a four-digit fragment can
+    # legitimately appear inside the server's ephemeral port.
+
+    assert "4111111111111111" not in repr(event.arguments)
 
 
 def test_a_urllib3_style_subclass_is_seen_through(server: Server, tape: Tape) -> None:
