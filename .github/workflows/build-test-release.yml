@@ -57,16 +57,16 @@ jobs:
       matrix:
         include:
           - target: flask
-            suite: framework_flask
+            suite: framework/flask
             version: "3.0.3"
           - target: flask
-            suite: framework_flask
+            suite: framework/flask
             version: "3.1.3"
           - target: jinja2
-            suite: template_jinja2
+            suite: template/jinja2
             version: "3.0.3"
           - target: jinja2
-            suite: template_jinja2
+            suite: template/jinja2
             version: "3.1.6"
     steps:
       - name: Checkout code
