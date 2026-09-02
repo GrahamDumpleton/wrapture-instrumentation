@@ -14,8 +14,9 @@ The directory has two levels:
   that importing the package or loading any registered class never
   imports a target, the listing tool reporting every entry cleanly,
   and the test-side WSGI driver's own tests.
-- One subdirectory per target, `tests/<category>_<target>/`
-  (`tests/framework_flask/`), holding that instrumentation's suite:
+- One subdirectory per target, `tests/<category>/<target>/`
+  (`tests/framework/flask/`), mirroring the source layout and holding
+  that instrumentation's suite:
   settings validation, applying and removing the class directly, the
   whole path through `wrapture.instrumentation()` with a timeline
   recording what the bindings observe, resolving the entry point by
@@ -65,7 +66,7 @@ just test -k version
 One target's suite alone:
 
 ```console
-just test-target framework_flask
+just test-target framework/flask
 ```
 
 Equivalently, run pytest directly with uv:
@@ -84,7 +85,7 @@ as each operation begins and a closing line with its outcome and
 timing; pytest captures stderr, so add -s to see it:
 
 ```console
-WRAPTURE_PRINTER=1 just test tests/framework_flask -s
+WRAPTURE_PRINTER=1 just test tests/framework/flask -s
 ```
 
 The sink is consulted alongside the tests' own scoped tapes, so the

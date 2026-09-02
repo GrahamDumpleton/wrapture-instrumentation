@@ -106,8 +106,8 @@ def main(arguments: list[str] | None = None) -> None:
     print("== live stream ==")
 
     with wrapture.instrumentation("flask", "jinja2"), wrapture.timeline() as tape:
-        from tests.framework_flask.portal import make_portal
-        from tests.framework_flask.shop import make_app
+        from tests.framework.flask.portal import make_portal
+        from tests.framework.flask.shop import make_app
         from tests.wsgi import request
 
         shop = make_app()

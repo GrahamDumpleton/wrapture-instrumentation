@@ -27,7 +27,7 @@ classifiers = [
 # install Flask, and whether a target is present and at a supported
 # version is checked by wrapture at apply time from the class data.
 dependencies = [
-    "wrapture>=1.0.0a16",
+    "wrapture>=1.0.0a18",
 ]
 
 [project.urls]
@@ -39,11 +39,12 @@ Documentation = "https://wrapture.readthedocs.io"
 # name the config's [[instrument]] entry uses. The group name has a
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
-flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
-jinja2 = "wrapture_instrumentation.template_jinja2:Jinja2Instrumentation"
-"urllib.request" = "wrapture_instrumentation.external_urllib_request:UrllibInstrumentation"
-"http.client" = "wrapture_instrumentation.external_http_client:HTTPClientInstrumentation"
-"xmlrpc.client" = "wrapture_instrumentation.external_xmlrpc_client:XMLRPCClientInstrumentation"
+flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
+jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
+"urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
+"http.client" = "wrapture_instrumentation.external.http_client:HTTPClientInstrumentation"
+"xmlrpc.client" = "wrapture_instrumentation.external.xmlrpc_client:XMLRPCClientInstrumentation"
+"xmlrpc.server" = "wrapture_instrumentation.server.xmlrpc_server:XMLRPCServerInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -54,7 +55,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-wrapture_instrumentation = ["py.typed", "*/README.md"]
+wrapture_instrumentation = ["py.typed", "*/*/README.md"]
 
 [tool.setuptools.dynamic]
 version = {attr = "wrapture_instrumentation.__version__"}

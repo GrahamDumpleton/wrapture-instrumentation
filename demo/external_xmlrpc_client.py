@@ -65,7 +65,7 @@ def main(arguments: list[str] | None = None) -> None:
 
     wrapture.add_sink(wrapture.Printer(stream=sys.stdout))
 
-    from tests.external_xmlrpc_client.server import serve
+    from tests.xmlrpcserver import serve
 
     serving = serve()
     server = next(serving)

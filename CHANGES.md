@@ -4,6 +4,13 @@
 
 In development.
 
+- Package layout: the targets are grouped in role directories named
+  for their categories (`framework/flask`, `external/urllib_request`,
+  `server/xmlrpc_server`), the collection form of the naming
+  guidance, a single-target package keeping the flat
+  `<category>_<target>` name. Entry point names are unchanged, so
+  nothing a config says is affected.
+
 - urllib (`urllib.request`, standard library): every request made
   through `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
   another standard library module, records as one external leaf on
@@ -41,7 +48,10 @@ In development.
   all pass through, carrying the external
   contract keys (method `POST`, url, host, port, path, and status:
   200 for any parsed response, a `Fault` included, or the code a
-  `ProtocolError` carries) plus the RPC method name as `operation`.
+  `ProtocolError` carries) plus the RPC pair `system` (always
+  `xmlrpc`) and the method name as `operation`, which the
+  OpenTelemetry export maps to `rpc.system` and `rpc.method`, naming
+  the span by the operation.
   The trace identity from `wrapture.trace_headers()` is added to
   every request's headers, leaving one the application supplied
   alone. Hosts and URLs are stripped of basic-auth userinfo,
@@ -50,6 +60,25 @@ In development.
   transport event beneath each call, and the `http.client` wire
   phases under that when enabled) and `propagate`. Supports Python
   3.12 and later.
+
+- xmlrpc.server (`xmlrpc.server`, standard library): every XML-RPC
+  POST a `SimpleXMLRPCServer` handles records as one request
+  boundary, a block labelled `xmlrpc.server` and categorised
+  `server` opened around the handler's `do_POST`, carrying `system`
+  (`xmlrpc`), the request method, path and client address and the
+  response status (200 with a marshalled response, a `Fault`
+  included; 404 for a path outside the handler's `rpc_paths`), and
+  joining the distributed trace an arriving `traceparent` header
+  carries, so both sides of a call between instrumented processes
+  share one trace id; the OpenTelemetry export reads the category as
+  a SERVER span named access-log style. Every dispatched
+  procedure records beneath it on
+  `SimpleXMLRPCDispatcher._dispatch`, annotated with the method name
+  as `operation`, a `system.multicall` nesting its sub-calls inside
+  the batch's own dispatch. Params reduce to a count and results to
+  a type; the headers only ever feed the join and are never
+  recorded. One setting: `join`, on by default. Supports Python 3.12
+  and later.
 
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the

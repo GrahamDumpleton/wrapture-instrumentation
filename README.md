@@ -72,11 +72,12 @@ $ python -m wrapture.tools instrumentation --toml
 
 | Target | Supported versions | Records | Settings |
 | ------ | ------------------ | ------- | -------- |
-| [`flask`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/framework_flask/README.md) | Flask 3.x | Every request as one tree, annotated with route and endpoint; every view observed and labelled by endpoint; template renders beneath their views; handled and unhandled failures noted on the request. | `ignore_paths`, `redact`, `lifecycle`, `handled_errors`, `templates` |
-| [`jinja2`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/template_jinja2/README.md) | Jinja2 3.x | Every render traced in all its forms (sync, async, streamed), annotated with the template name; the loading and compile pipeline beneath it; context and output kept out of capture. | `loading` |
-| [`urllib.request`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external_urllib_request/README.md) | Python 3.12+ (standard library) | Every request through `urllib.request` as one external leaf carrying method, URL, host, port, path, query and status; the trace identity propagated in its headers; the query recorded with secrets masked, the body and response kept out of capture. | `leaf`, `propagate`, `redact` |
-| [`http.client`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external_http_client/README.md) | Python 3.12+ (standard library) | The wire phases of each exchange (connect where the socket really opens, the request line with its query masked, headers and body out by size, the response wait with its status) as plain events. A debugging aid: beneath an instrumented higher-level client nothing records until that client is switched to `leaf = false`. | `redact` |
-| [`xmlrpc.client`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external_xmlrpc_client/README.md) | Python 3.12+ (standard library) | Every remote call through a `ServerProxy` as one external leaf carrying the RPC method name, URL, host, port, path and status (a `Fault` is a 200, a `ProtocolError` its code); the trace identity propagated in its headers; credentials, arguments, results and bodies kept out of capture. | `leaf`, `propagate` |
+| [`flask`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/framework/flask/README.md) | Flask 3.x | Every request as one tree, annotated with route and endpoint; every view observed and labelled by endpoint; template renders beneath their views; handled and unhandled failures noted on the request. | `ignore_paths`, `redact`, `lifecycle`, `handled_errors`, `templates` |
+| [`jinja2`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/template/jinja2/README.md) | Jinja2 3.x | Every render traced in all its forms (sync, async, streamed), annotated with the template name; the loading and compile pipeline beneath it; context and output kept out of capture. | `loading` |
+| [`urllib.request`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external/urllib_request/README.md) | Python 3.12+ (standard library) | Every request through `urllib.request` as one external leaf carrying method, URL, host, port, path, query and status; the trace identity propagated in its headers; the query recorded with secrets masked, the body and response kept out of capture. | `leaf`, `propagate`, `redact` |
+| [`http.client`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external/http_client/README.md) | Python 3.12+ (standard library) | The wire phases of each exchange (connect where the socket really opens, the request line with its query masked, headers and body out by size, the response wait with its status) as plain events. A debugging aid: beneath an instrumented higher-level client nothing records until that client is switched to `leaf = false`. | `redact` |
+| [`xmlrpc.client`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/external/xmlrpc_client/README.md) | Python 3.12+ (standard library) | Every remote call through a `ServerProxy` as one external leaf carrying the RPC system and method name, URL, host, port, path and status (a `Fault` is a 200, a `ProtocolError` its code); the trace identity propagated in its headers; credentials, arguments, results and bodies kept out of capture. | `leaf`, `propagate` |
+| [`xmlrpc.server`](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/src/wrapture_instrumentation/server/xmlrpc_server/README.md) | Python 3.12+ (standard library) | Every XML-RPC POST a `SimpleXMLRPCServer` handles as one `server`-categorised request boundary carrying method, path, client and status, joining the distributed trace an arriving `traceparent` header carries; each dispatched procedure beneath it with the method name as `operation`, multicall sub-calls nested; params and results reduced to counts and types. | `join` |
 
 The entry point name is the config's `name`; the table summarizes
 each instrumentation, and the linked per-target README is its full
@@ -87,23 +88,38 @@ target.
 
 ## Adding a target
 
-Each target lives in its own subpackage under
-`src/wrapture_instrumentation/`, named `<category>_<target>`:
-`framework_flask`, `external_requests`, `database_sqlite3`. The
-category says what kind of thing the target is and, with it, which
-part of wrapture the instrumentation mostly uses:
+Each target lives under `src/wrapture_instrumentation/` in a role
+directory named for its category, as `<category>/<target>`:
+`framework/flask`, `external/requests`, `database/sqlite3`. The
+target's own name is its module path with dots as underscores
+(`external/urllib_request` for `urllib.request`,
+`server/xmlrpc_server` for `xmlrpc.server`), and the category says
+what kind of thing the target is and, with it, which part of
+wrapture the instrumentation mostly uses:
 
-- `framework_`: web frameworks, and their extensions as compound
-  names (`framework_flask_restful`).
-- `external_`: outbound HTTP and RPC clients and service SDKs.
-- `database_`: DB-API drivers and SQL toolkits.
-- `datastore_`: other stores and caches.
-- `task_`: task queues. `messaging_`: brokers and their clients.
-- `server_`: WSGI and ASGI servers. `template_`: template engines.
+- `framework/`: web frameworks, and their extensions as compound
+  names (`framework/flask_restful`).
 
-A new category is added when a target fits none of these. The
-directory name is internal; the entry point name, and so the name a
-config uses, is always the bare target.
+- `external/`: outbound HTTP and RPC clients and service SDKs.
+
+- `database/`: DB-API drivers and SQL toolkits.
+
+- `datastore/`: other stores and caches.
+
+- `task/`: task queues. `messaging/`: brokers and their clients.
+
+- `server/`: servers handling inbound requests, WSGI and ASGI
+  servers included.
+
+- `template/`: template engines.
+
+A new category is added when a target fits none of these. The role
+directories are the collection form of the layout: a package
+instrumenting a single target skips them and uses the flat
+`<category>_<target>` name (`external_requests`), the same words
+joined by an underscore instead of a directory. Either way the
+layout is internal; the entry point name, and so the name a config
+uses, is always the bare target.
 
 The subpackage's `__init__.py` holds one `wrapture.Instrumentation`
 subclass, with one `@wrapture.instrumentation_hook` method per
@@ -113,7 +129,7 @@ the target lives in sibling submodules named for what they patch
 level.
 The class is registered in `pyproject.toml` under
 `[project.entry-points."wrapture.instrumentation"]`, and gets its own
-test suite under `tests/<category>_<target>/`. Each subpackage also
+test suite under `tests/<category>/<target>/`, mirroring the source layout. Each subpackage also
 carries a `README.md`, its user documentation, rendered by GitHub
 when browsing the directory and linked from the table above; the
 module docstrings stay the implementation commentary. The

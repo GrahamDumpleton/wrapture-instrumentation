@@ -16,7 +16,7 @@ default:
 test *ARGS:
     uv run pytest {{ARGS}}
 
-# Run one target's test suite, e.g. `just test-target framework_flask`.
+# Run one target's test suite, e.g. `just test-target framework/flask`.
 test-target TARGET *ARGS:
     uv run pytest tests/{{TARGET}} {{ARGS}}
 
@@ -42,7 +42,7 @@ test-all *ARGS:
 # stays the default and older versions need no environment of their own.
 # Run the Flask suite against one Flask version, e.g. `just test-flask 3.0.3`.
 test-flask VERSION *ARGS:
-    uv run --with "flask=={{VERSION}}" pytest tests/framework_flask {{ARGS}}
+    uv run --with "flask=={{VERSION}}" pytest tests/framework/flask {{ARGS}}
 
 # Run the Flask suite against every version in flask_versions.
 test-flask-all *ARGS:
@@ -55,7 +55,7 @@ test-flask-all *ARGS:
 
 # Run the Jinja2 suite against one Jinja2 version, e.g. `just test-jinja2 3.0.3`.
 test-jinja2 VERSION *ARGS:
-    uv run --with "jinja2=={{VERSION}}" pytest tests/template_jinja2 {{ARGS}}
+    uv run --with "jinja2=={{VERSION}}" pytest tests/template/jinja2 {{ARGS}}
 
 # Run the Jinja2 suite against every version in jinja2_versions.
 test-jinja2-all *ARGS:
@@ -95,6 +95,12 @@ demo-http-client *ARGS:
 # applied; same shape as demo-flask, --otel exports to a local OTLP endpoint.
 demo-xmlrpc *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_xmlrpc_client {{ARGS}}
+
+# Drive an instrumented SimpleXMLRPCServer with an instrumented client,
+# both sides of each call in one process sharing one trace id; same
+# shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-xmlrpc-server *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.server_xmlrpc {{ARGS}}
 
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
