@@ -45,6 +45,7 @@ jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
 "http.client" = "wrapture_instrumentation.external.http_client:HTTPClientInstrumentation"
 "xmlrpc.client" = "wrapture_instrumentation.external.xmlrpc_client:XMLRPCClientInstrumentation"
 "xmlrpc.server" = "wrapture_instrumentation.server.xmlrpc_server:XMLRPCServerInstrumentation"
+"wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

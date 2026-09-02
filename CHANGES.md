@@ -80,6 +80,24 @@ In development.
   recorded. One setting: `join`, on by default. Supports Python 3.12
   and later.
 
+- wsgiref (`wsgiref.simple_server`, standard library): every
+  application the server is handed, through `make_server`,
+  `set_app` or a subclass, is wrapped in wrapture's recording WSGI
+  middleware at the server's own seam, `WSGIServer.get_app`, without
+  the application changing at all: one request tree per request,
+  named by the application's own module and qualname, carrying
+  method, path, the query with secrets masked, scheme, peer and the
+  status line, and joining the distributed trace an arriving
+  `traceparent` header carries. One boundary per request however
+  many layers record: an application already carrying its own
+  recording middleware (a Flask application the flask
+  instrumentation wrapped) passes the inner one through, and
+  framework annotations land on the one event. Removal restores
+  `get_app`, un-wrapping servers already running. Two settings:
+  `ignore_paths` (path globs whose requests record nothing at all)
+  and `redact` (query parameters masked by name on top of the
+  built-in set). Supports Python 3.12 and later.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline
