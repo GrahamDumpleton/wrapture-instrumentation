@@ -108,6 +108,12 @@ demo-xmlrpc-server *ARGS:
 demo-wsgiref *ARGS:
     uv run --with "wrapture[otel]" python -m demo.server_wsgiref {{ARGS}}
 
+# Serve applications through an instrumented werkzeug development server
+# with an instrumented urllib client, a Flask app showing one boundary
+# per request; same shape as demo-flask, --otel exports to a local endpoint.
+demo-werkzeug *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.server_werkzeug {{ARGS}}
+
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
 # run, for iterating against unreleased wrapture changes without

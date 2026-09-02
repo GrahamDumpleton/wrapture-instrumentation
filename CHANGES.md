@@ -98,6 +98,22 @@ In development.
   and `redact` (query parameters masked by name on top of the
   built-in set). Supports Python 3.12 and later.
 
+- werkzeug (`werkzeug.serving`, werkzeug 3.x): every application
+  handed to werkzeug's development server, through `run_simple`,
+  `make_server`, a server class directly or Flask's `app.run()`, is
+  wrapped in wrapture's recording WSGI middleware as the server is
+  built (`BaseWSGIServer.__init__`, the one place the application is
+  handed over, werkzeug having no accessor on the request path):
+  one request tree per request, named by the application's own
+  module and qualname, carrying method, path, the query with
+  secrets masked, scheme, peer and the status line, and joining the
+  distributed trace an arriving `traceparent` header carries. One
+  boundary per request however many layers record, so it composes
+  with the flask instrumentation. Removal stops the wrapping for
+  servers built afterwards; a server built while instrumented keeps
+  its wrapper for its own lifetime. Two settings: `ignore_paths`
+  and `redact`, as on the wsgiref target. Supports werkzeug 3.x.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline
