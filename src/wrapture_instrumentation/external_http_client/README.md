@@ -22,7 +22,8 @@ whether a connection was really reused, what actually crossed the
 wire when a request misbehaved. That takes two config moves: enable
 this instrumentation, and switch the higher-level client's events
 out of being leaves, presuming its instrumentation offers the
-switch (the `urllib.request` instrumentation does, as `leaf`):
+switch (the `urllib.request` and `xmlrpc.client` instrumentations
+both do, as `leaf`):
 
 ```toml
 [[instrument]]
@@ -40,11 +41,10 @@ Whether anything records here depends only on what is in flight
 above: the phases are silent beneath any enabled higher-level
 client's leaf, and record in full wherever no such leaf covers
 them. A direct http.client connection, or a client whose own
-instrumentation is not enabled, or that has none (xmlrpc.client, at
-the time of writing), therefore shows its phases with no switch;
-when such a client gains an enabled instrumentation of its own, its
-leaf hides the phases in the same way, with the same `leaf = false`
-switch to reveal them.
+instrumentation is not enabled or that has none, therefore shows
+its phases with no switch; a client with an enabled instrumentation
+of its own hides them beneath its leaf in the same way, with the
+same `leaf = false` switch to reveal them.
 
 ## What you see
 

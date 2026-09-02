@@ -43,6 +43,7 @@ flask = "wrapture_instrumentation.framework_flask:FlaskInstrumentation"
 jinja2 = "wrapture_instrumentation.template_jinja2:Jinja2Instrumentation"
 "urllib.request" = "wrapture_instrumentation.external_urllib_request:UrllibInstrumentation"
 "http.client" = "wrapture_instrumentation.external_http_client:HTTPClientInstrumentation"
+"xmlrpc.client" = "wrapture_instrumentation.external_xmlrpc_client:XMLRPCClientInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

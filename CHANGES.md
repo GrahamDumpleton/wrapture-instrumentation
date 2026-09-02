@@ -35,6 +35,22 @@ In development.
   trace propagation at this layer; that belongs to the client above.
   Supports Python 3.12 and later.
 
+- xmlrpc.client (`xmlrpc.client`, standard library): every remote
+  call through a `ServerProxy` records as one external leaf on the
+  proxy's private `ServerProxy.__request` method, the one door they
+  all pass through, carrying the external
+  contract keys (method `POST`, url, host, port, path, and status:
+  200 for any parsed response, a `Fault` included, or the code a
+  `ProtocolError` carries) plus the RPC method name as `operation`.
+  The trace identity from `wrapture.trace_headers()` is added to
+  every request's headers, leaving one the application supplied
+  alone. Hosts and URLs are stripped of basic-auth userinfo,
+  arguments reduce to a count, results to a type and bodies to a
+  size. Two settings, both on by default: `leaf` (off to see the
+  transport event beneath each call, and the `http.client` wire
+  phases under that when enabled) and `propagate`. Supports Python
+  3.12 and later.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline

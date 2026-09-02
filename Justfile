@@ -91,6 +91,11 @@ demo-urllib *ARGS:
 demo-http-client *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_http_client {{ARGS}}
 
+# Drive xmlrpc.client against a local server with the instrumentation
+# applied; same shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-xmlrpc *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_xmlrpc_client {{ARGS}}
+
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the
 # run, for iterating against unreleased wrapture changes without

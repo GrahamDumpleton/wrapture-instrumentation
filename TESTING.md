@@ -146,7 +146,7 @@ versions that `just test-flask-all` loops over; the CI workflow runs
 the same matrix. A test in each target's suite asserts the installed
 target satisfies `supports`, so a matrix entry outside the range
 fails loudly rather than passing vacuously. A standard library target
-(`urllib.request`, `http.client`) has no version of its own to overlay: its version is the
+(`urllib.request`, `http.client`, `xmlrpc.client`) has no version of its own to overlay: its version is the
 interpreter's, its `supports` is a Python version range, and the
 Python version matrix is its coverage.
 
