@@ -97,3 +97,21 @@ def test_nothing_recording_means_nothing_to_propagate(server: Server) -> None:
         urllib.request.urlopen(f"{server.url}/ok").close()
 
     assert server.header(0, "traceparent") is None
+
+
+def test_no_identity_is_sent_beneath_a_foreign_leaf(server: Server, tape: Tape) -> None:
+    # Propagation follows recording: silenced beneath another
+    # target's leaf, the client injects nothing and leaves the leaf's
+    # event alone, so a leaf that does not propagate at its own level
+    # sends no identity downstream.
+
+    @wrapture.observed(leaf=True)
+    def vendor_call() -> None:
+        urllib.request.urlopen(f"{server.url}/ok").close()
+
+    vendor_call()
+
+    (leaf,) = tape.all
+    assert tape.children_of(leaf) == []
+    assert "url" not in leaf.data
+    assert server.header(0, "traceparent") is None

@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 import xmlrpc.client
 
+import wrapture
 from wrapture import Tape, instrumentation, timeline
 
 from tests.xmlrpcserver import Server
@@ -64,4 +65,22 @@ def test_nothing_recording_means_nothing_to_propagate(server: Server) -> None:
     with instrumentation(XMLRPCClientInstrumentation):
         xmlrpc.client.ServerProxy(server.url).echo("hello")
 
+    assert server.header(0, "traceparent") is None
+
+
+def test_no_identity_is_sent_beneath_a_foreign_leaf(server: Server, tape: Tape) -> None:
+    # Propagation follows recording: silenced beneath another
+    # target's leaf, the client injects nothing and leaves the leaf's
+    # event alone, so a leaf that does not propagate at its own level
+    # sends no identity downstream.
+
+    @wrapture.observed(leaf=True)
+    def vendor_call() -> None:
+        xmlrpc.client.ServerProxy(server.url).echo("hello")
+
+    vendor_call()
+
+    (leaf,) = tape.all
+    assert tape.children_of(leaf) == []
+    assert "operation" not in leaf.data
     assert server.header(0, "traceparent") is None

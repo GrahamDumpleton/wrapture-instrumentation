@@ -33,6 +33,9 @@ it is sent, so a service that understands them joins the trace. A
 header the application set itself is left alone. A redirect hop's
 request is a copy of the outer one, headers included, so the
 identity travels on every hop as the header already present.
+Propagation follows recording: silenced beneath another target's
+leaf, the send injects nothing, so a leaf that does not propagate at
+its own level sends no identity downstream.
 
 A nested send (the one a redirect hop makes) runs beneath the outer
 one on the same thread, and beneath a leaf its annotate() would land
@@ -172,14 +175,21 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         if not isinstance(getattr(request, "url", None), str):
             return wrapped(*args, **kwargs)
 
-        if settings["propagate"]:
+        # Propagation and annotation belong to the level that
+        # records: silenced beneath another target's leaf, this
+        # binding must neither inject the leaf's identity downstream
+        # nor smear its keys onto the leaf's event.
+
+        owned = bool(wrapture.current_event(binding=send))
+
+        if owned and settings["propagate"]:
             propagate_into(request)
 
-        # A nested send beneath a leaf has no event of its own to
-        # annotate, and must not overwrite the leaf's.
+        # A nested send beneath this target's own leaf has no event
+        # of its own to annotate, and must not overwrite the leaf's.
 
         nested = _depth.get() > 0
-        recording = not (nested and settings["leaf"])
+        recording = owned and not (nested and settings["leaf"])
 
         if recording:
             wrapture.annotate(**describe(request, policy))

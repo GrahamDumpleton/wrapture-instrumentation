@@ -39,7 +39,9 @@ reduces to its type.
 
 Propagation is the other half: the current trace identity, from
 wrapture.trace_headers(), is added to the request's headers before
-it is sent, so a service that understands them joins the trace. A
+it is sent, so a service that understands them joins the trace.
+Propagation follows recording: silenced beneath another target's
+leaf, the send injects and annotates nothing. A
 header the application set itself is left alone. A redirect hop's
 request copies the headers of the one before it, so the identity
 travels on every hop.
@@ -148,14 +150,23 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     names = tuple(settings["redact"])
     policy: Any = wrapture.redact(*names) if names else "reference"
 
-    def opening(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+    def opening(binding: Any, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
         """The shared front half of both wrappers: pick out the
         request, propagate into it and annotate the contract keys,
-        or return None when the call carries no request."""
+        or return None when the call carries no request or the
+        binding did not record."""
 
         request = args[0] if args else kwargs.get("request")
 
         if getattr(request, "url", None) is None:
+            return None
+
+        # Propagation and annotation belong to the level that
+        # records: silenced beneath another target's leaf, the send
+        # must neither inject the leaf's identity downstream nor
+        # smear its keys onto the leaf's event.
+
+        if not wrapture.current_event(binding=binding):
             return None
 
         if settings["propagate"]:
@@ -177,7 +188,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> Any:
-        if opening(args, kwargs) is None:
+        if opening(send, args, kwargs) is None:
             return wrapped(*args, **kwargs)
 
         response = wrapped(*args, **kwargs)
@@ -188,7 +199,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     async def record_async(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> Any:
-        if opening(args, kwargs) is None:
+        if opening(send_async, args, kwargs) is None:
             return await wrapped(*args, **kwargs)
 
         response = await wrapped(*args, **kwargs)

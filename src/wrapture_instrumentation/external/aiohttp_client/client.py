@@ -38,7 +38,9 @@ wrapture.trace_headers(), is added to the request's headers before
 it is sent, so a service that understands them joins the trace. A
 header the application set itself is left alone, and aiohttp copies
 the request's headers onto each redirect hop, so the identity
-travels the whole chain.
+travels the whole chain. Propagation follows recording: silenced
+beneath another target's leaf, the request injects and annotates
+nothing.
 """
 
 from __future__ import annotations
@@ -161,17 +163,25 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         if method is None or raw_url is None:
             return await wrapped(*args, **kwargs)
 
-        if settings["propagate"]:
+        # Propagation and annotation belong to the level that
+        # records: silenced beneath another target's leaf, the
+        # request must neither inject the leaf's identity downstream
+        # nor smear its keys onto the leaf's event.
+
+        owned = bool(wrapture.current_event(binding=request))
+
+        if owned and settings["propagate"]:
             propagate_into(kwargs)
 
-        wrapture.annotate(
-            method=str(method), **describe(full_url(instance, raw_url), policy)
-        )
+        if owned:
+            wrapture.annotate(
+                method=str(method), **describe(full_url(instance, raw_url), policy)
+            )
 
         response = await wrapped(*args, **kwargs)
 
         status = getattr(response, "status", None)
-        if status is not None:
+        if owned and status is not None:
             wrapture.annotate(status=status)
 
         return response

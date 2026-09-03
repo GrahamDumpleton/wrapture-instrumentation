@@ -128,9 +128,9 @@ def propagate_into(instance: Any, kwargs: dict[str, Any], headers_arg: Any) -> N
     kwargs["headers"] = headers
 
 
-def _recorder(instrumentation: wrapture.Instrumentation) -> Any:
+def _recorder(instrumentation: wrapture.Instrumentation, binding: Any) -> Any:
     """Build the record function the two doors share, closed over the
-    settings and the query policy."""
+    settings, the query policy and the door's own binding."""
 
     settings = instrumentation.settings
 
@@ -150,10 +150,15 @@ def _recorder(instrumentation: wrapture.Instrumentation) -> Any:
             return wrapped(*args, **kwargs)
 
         # The outermost call is the request the caller made; a nested
-        # one under a leaf has no event of its own and must not
-        # overwrite the leaf's.
+        # one under this target's own leaf has no event of its own and
+        # must not overwrite the leaf's. Propagation and annotation
+        # both belong to the level that records, so silenced beneath
+        # another target's leaf the door neither injects the leaf's
+        # identity downstream nor smears its keys onto the leaf's
+        # event.
 
-        recording = not (_depth.get() > 0 and settings["leaf"])
+        owned = bool(wrapture.current_event(binding=binding))
+        recording = owned and not (_depth.get() > 0 and settings["leaf"])
 
         if recording:
             if settings["propagate"]:
@@ -192,7 +197,7 @@ def _bind(owner: Any, instrumentation: wrapture.Instrumentation) -> wrapture.Bin
         capture_args="none",
         capture_result="types",
     )
-    binding.on_call.decorates(_recorder(instrumentation))
+    binding.on_call.decorates(_recorder(instrumentation, binding))
     binding.apply()
 
     instrumentation.on_cleanup(binding.remove)

@@ -34,8 +34,12 @@ Propagation is the other half: Transport.send_headers is given every
 header the request will carry, so the current trace identity from
 wrapture.trace_headers() is appended there, unless a header of the
 same name was already supplied (a ServerProxy(headers=...) the
-application set itself). Behaviour still applies beneath a leaf, so
-propagation does not depend on the leaf setting.
+application set itself). Behaviour still applies beneath this
+target's own leaf, so propagation does not depend on the leaf
+setting; but it does follow recording: silenced beneath another
+target's leaf, the call injects and annotates nothing, so a leaf
+that does not propagate at its own level sends no identity
+downstream.
 """
 
 from __future__ import annotations
@@ -115,7 +119,13 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     ) -> Any:
         methodname = args[0] if args else kwargs.get("methodname")
 
-        if isinstance(methodname, str):
+        # Annotation belongs to the level that records: silenced
+        # beneath another target's leaf, the call must not smear its
+        # keys onto the leaf's event.
+
+        owned = bool(wrapture.current_event(binding=call))
+
+        if owned and isinstance(methodname, str):
             wrapture.annotate(**describe(module, instance, methodname))
 
         # Any parsed response was a 200, a Fault included; a
@@ -125,13 +135,16 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         try:
             outcome = wrapped(*args, **kwargs)
         except module.Fault:
-            wrapture.annotate(status=200)
+            if owned:
+                wrapture.annotate(status=200)
             raise
         except module.ProtocolError as error:
-            wrapture.annotate(status=error.errcode)
+            if owned:
+                wrapture.annotate(status=error.errcode)
             raise
 
-        wrapture.annotate(status=200)
+        if owned:
+            wrapture.annotate(status=200)
         return outcome
 
     def inject(
@@ -142,6 +155,13 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         # of the same name.
 
         if len(args) < 2 or not isinstance(args[1], list):
+            return args, kwargs
+
+        # Propagation follows recording: the headers are appended
+        # only when the remote call's own binding recorded, so
+        # silenced beneath another target's leaf nothing is injected.
+
+        if not wrapture.current_event(binding=call):
             return args, kwargs
 
         headers: list[tuple[str, str]] = args[1]

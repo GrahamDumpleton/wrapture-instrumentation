@@ -30,7 +30,8 @@ it is sent, so a service that understands them joins the trace. A
 header the application set itself is left alone. The headers go on
 as unredirected headers, which urllib drops when it follows a
 redirect; the redirected request comes back through open and is
-given its own.
+given its own. Propagation follows recording: silenced beneath
+another target's leaf, the open injects nothing.
 
 A nested open (the one a redirect handler makes) runs beneath the
 outer one on the same thread, and beneath a leaf its annotate()
@@ -185,14 +186,21 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         if not isinstance(target, module.Request):
             return wrapped(*args, **kwargs)
 
-        if settings["propagate"]:
+        # Propagation and annotation belong to the level that
+        # records: silenced beneath another target's leaf, the open
+        # must neither inject the leaf's identity downstream nor
+        # smear its keys onto the leaf's event.
+
+        owned = bool(wrapture.current_event(binding=opener))
+
+        if owned and settings["propagate"]:
             propagate_into(target)
 
-        # A nested open beneath a leaf has no event of its own to
-        # annotate, and must not overwrite the leaf's.
+        # A nested open beneath this target's own leaf has no event
+        # of its own to annotate, and must not overwrite the leaf's.
 
         nested = _depth.get() > 0
-        recording = not (nested and settings["leaf"])
+        recording = owned and not (nested and settings["leaf"])
 
         if recording:
             wrapture.annotate(**describe(target, policy))

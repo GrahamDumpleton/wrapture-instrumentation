@@ -5,6 +5,7 @@ setting to turn it off."""
 from __future__ import annotations
 
 import urllib3
+import wrapture
 from wrapture import Tape, instrumentation, timeline
 
 from tests.httpserver import Server
@@ -60,4 +61,23 @@ def test_propagate_off_sends_nothing(server: Server) -> None:
         with urllib3.PoolManager() as manager:
             manager.request("GET", f"{server.url}/ok")
 
+    assert server.header(0, "traceparent") is None
+
+
+def test_no_identity_is_sent_beneath_a_foreign_leaf(server: Server, tape: Tape) -> None:
+    # Propagation follows recording: silenced beneath another
+    # target's leaf, the client injects nothing and leaves the leaf's
+    # event alone, so a leaf that does not propagate at its own level
+    # sends no identity downstream.
+
+    @wrapture.observed(leaf=True)
+    def vendor_call() -> None:
+        with urllib3.PoolManager() as manager:
+            manager.request("GET", f"{server.url}/ok")
+
+    vendor_call()
+
+    (leaf,) = tape.all
+    assert tape.children_of(leaf) == []
+    assert "url" not in leaf.data
     assert server.header(0, "traceparent") is None

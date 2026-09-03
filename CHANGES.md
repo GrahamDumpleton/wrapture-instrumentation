@@ -11,6 +11,16 @@ In development.
   `<category>_<target>` name. Entry point names are unchanged, so
   nothing a config says is affected.
 
+- Propagation follows recording, across every propagating client
+  target (requests, httpx, urllib3, urllib, aiohttp's client,
+  xmlrpc.client and gRPC's client side): silenced beneath another
+  target's leaf, a client neither injects the trace identity into
+  what it sends nor annotates its keys (which would land on the
+  leaf's event). A leaf that does not propagate at its own level
+  therefore sends no identity downstream, so an opaque leaf over a
+  third-party service leaks nothing it would not understand; each
+  client still propagates for itself, its own leaf included.
+
 - urllib (`urllib.request`, standard library): every request made
   through `urllib.request`, by `urlopen`, `urlretrieve`, a custom opener or
   another standard library module, records as one external leaf on

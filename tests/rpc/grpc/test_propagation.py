@@ -8,6 +8,7 @@ import pytest
 
 grpc = pytest.importorskip("grpc")
 
+import wrapture
 from wrapture import Tape, instrumentation
 
 from tests.rpc.grpc.service import Service, serve
@@ -60,3 +61,28 @@ def test_metadata_values_never_reach_the_record(service: Service, tape: Tape) ->
     for event in tape.all:
         assert "a-secret-value" not in repr(event.data)
         assert "a-secret-value" not in repr(event.arguments)
+
+
+def test_no_identity_is_sent_beneath_a_foreign_leaf(
+    service: Service, tape: Tape
+) -> None:
+    # Propagation follows recording: silenced beneath another
+    # target's leaf, the client injects nothing and leaves the leaf's
+    # event alone, so a leaf that does not propagate at its own level
+    # sends no identity downstream.
+
+    @wrapture.observed(leaf=True)
+    def vendor_call() -> None:
+        with grpc.insecure_channel(service.address) as channel:
+            channel.unary_unary("/demo.Echo/Shout")(b"hi")
+
+    vendor_call()
+
+    # The instrumented server side still records its own boundary (it
+    # is not beneath the client's leaf); the client side is the leaf
+    # alone, with nothing recorded or smeared.
+
+    (leaf,) = [event for event in tape.all if event.kind == "call"]
+    assert tape.children_of(leaf) == []
+    assert "system" not in leaf.data
+    assert service.header(0, "traceparent") is None

@@ -114,3 +114,21 @@ def test_nothing_recording_means_nothing_to_propagate(server: Server) -> None:
         run(lambda s: get(s, f"{server.url}/ok"))
 
     assert server.header(0, "traceparent") is None
+
+
+def test_no_identity_is_sent_beneath_a_foreign_leaf(server: Server, tape: Tape) -> None:
+    # Propagation follows recording: silenced beneath another
+    # target's leaf, the client injects nothing and leaves the leaf's
+    # event alone, so a leaf that does not propagate at its own level
+    # sends no identity downstream.
+
+    @wrapture.observed(leaf=True)
+    async def vendor_call(session: ClientSession) -> None:
+        await get(session, f"{server.url}/ok")
+
+    run(vendor_call)
+
+    (leaf,) = tape.all
+    assert tape.children_of(leaf) == []
+    assert "url" not in leaf.data
+    assert server.header(0, "traceparent") is None

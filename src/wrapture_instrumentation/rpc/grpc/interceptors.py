@@ -146,6 +146,12 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     ):
         pass
 
+    # The four door bindings, collected as they are built, so the
+    # interceptor can ask whether one of them recorded the call it is
+    # propagating for.
+
+    doors: list[wrapture.Binding] = []
+
     def with_trace_metadata(details: Any) -> Any:
         headers = wrapture.trace_headers()
 
@@ -174,7 +180,14 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             self.endpoint = endpoint(target)
 
         def _pass(self, continuation: Any, details: Any, argument: Any) -> Any:
-            if active[0] and settings["propagate"]:
+            # Propagation follows recording: silenced beneath another
+            # target's leaf, none of the door bindings recorded this
+            # call, and the leaf's identity must not leak into the
+            # metadata of a service that is not part of the trace.
+
+            recorded = any(wrapture.current_event(binding=door) for door in doors)
+
+            if active[0] and settings["propagate"] and recorded:
                 details = with_trace_metadata(details)
 
             return continuation(details, argument)
@@ -199,30 +212,42 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         ) -> Any:
             return self._pass(continuation, details, request_iterator)
 
-    def calls(
-        wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> Any:
-        details = args[1] if len(args) > 1 else kwargs.get("details")
+    def calls_for(binding: wrapture.Binding) -> Any:
+        """Build the recording decorator for one door, closed over
+        the door's own binding so annotation follows recording:
+        silenced beneath another target's leaf, the door must not
+        smear its keys onto the leaf's event."""
 
-        data = describe(getattr(details, "method", None))
-        data.update(instance.endpoint)
-        wrapture.annotate(**data)
+        def calls(
+            wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+        ) -> Any:
+            details = args[1] if len(args) > 1 else kwargs.get("details")
 
-        # The continuation hands back a call object rather than
-        # raising: a blocking unary-response call comes back already
-        # terminal, successful or not, and its code is the status; a
-        # streamed response or a future is still in flight, and its
-        # consumption is deliberately not tracked.
+            owned = bool(wrapture.current_event(binding=binding))
 
-        outcome = wrapped(*args, **kwargs)
+            if owned:
+                data = describe(getattr(details, "method", None))
+                data.update(instance.endpoint)
+                wrapture.annotate(**data)
 
-        try:
-            if outcome.done():
-                wrapture.annotate(code=outcome.code().name)
-        except Exception:
-            pass
+            # The continuation hands back a call object rather than
+            # raising: a blocking unary-response call comes back
+            # already terminal, successful or not, and its code is
+            # the status; a streamed response or a future is still in
+            # flight, and its consumption is deliberately not
+            # tracked.
 
-        return outcome
+            outcome = wrapped(*args, **kwargs)
+
+            try:
+                if owned and outcome.done():
+                    wrapture.annotate(code=outcome.code().name)
+            except Exception:
+                pass
+
+            return outcome
+
+        return calls
 
     def call_binding(door: str) -> wrapture.Binding:
         binding = wrapture.binding(
@@ -234,7 +259,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             capture_args="none",
             capture_result="types",
         )
-        binding.on_call.decorates(calls)
+        binding.on_call.decorates(calls_for(binding))
+        doors.append(binding)
 
         return binding
 
