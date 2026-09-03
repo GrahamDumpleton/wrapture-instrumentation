@@ -19,7 +19,8 @@ other flask module imports them into its own namespace, so the eight
 attributes bound here are every location Flask itself holds.
 
 These bindings record (the rendering is the trace, unlike the
-plumbing patches elsewhere in this package), and their capture policy
+plumbing patches elsewhere in this package), each event carrying the
+template category, and their capture policy
 is deliberate about sensitive data: the template name (or the source
 text, truncated) is captured, the render context is masked wholesale
 (it is arbitrary application data: user objects, form contents), and
@@ -96,6 +97,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             bound = wrapture.binding(
                 owner,
                 name,
+                category="template",
                 capture_args=masked,
                 capture_result=masked,
             )

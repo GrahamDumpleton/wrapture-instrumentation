@@ -8,11 +8,13 @@ trace):
   renders. generate returns a generator and generate_async an async
   generator, which wrapture records around the iteration, so a
   streamed render shows its chunk count and timing; render_async
-  records around the await. Each render event is annotated with the
-  template's own name (jinja2's "<template>" stands in for a string
-  template), so the identity is data on the event while the name
-  stays the derived path, jinja2.environment:Template.render and
-  its siblings.
+  records around the await. Each render event carries the template
+  category and is annotated with the template's own name (jinja2's
+  "<template>" stands in for a string template), so the identity is
+  data on the event while the name stays the derived path,
+  jinja2.environment:Template.render and its siblings. The loading
+  pipeline stays uncategorised: it is engine machinery around the
+  render, not the render itself.
 
 - Environment._load_template and Environment.compile are the loading
   pipeline: every get_template passes through _load_template (a
@@ -117,6 +119,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         bound = wrapture.binding(
             module.Template,
             name,
+            category="template",
             capture_args=masked,
             capture_result=masked,
         )

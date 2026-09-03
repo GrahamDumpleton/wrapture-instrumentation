@@ -56,6 +56,7 @@ def test_a_rendering_view_shows_the_render_beneath_it(tape: Tape) -> None:
     assert view.label == "hello"
     assert render.label is None
     assert render.path == "flask:render_template"
+    assert render.category == "template"
     assert tape.parent_of(render) is view
 
 
@@ -119,6 +120,7 @@ def test_both_module_and_namespace_attributes_are_patched(tape: Tape) -> None:
         "flask:render_template",
         "flask.templating:render_template",
     ]
+    assert all(event.category == "template" for event in tape.all)
 
 
 def test_a_from_import_taken_before_apply_stays_plain(tape: Tape) -> None:

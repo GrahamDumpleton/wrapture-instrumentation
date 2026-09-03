@@ -47,6 +47,13 @@ def test_a_cold_render_shows_the_whole_pipeline(tape: Tape) -> None:
     assert render.path == "jinja2.environment:Template.render"
     assert render.label is None
 
+    # The render classifies as template work; the loading pipeline is
+    # engine machinery and stays uncategorised.
+
+    assert render.category == "template"
+    assert load.category is None
+    assert compiled.category is None
+
     # The compile happens inside the cold load; the render follows as
     # its own root once the template is in hand.
 
@@ -149,6 +156,7 @@ def test_the_async_forms_record(tape: Tape) -> None:
         "render_async",
         "generate_async",
     ]
+    assert all(event.category == "template" for event in renders)
     assert renders[0].result == "<16 chars>"
     assert renders[1].items == 4
 

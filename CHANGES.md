@@ -228,8 +228,9 @@ In development.
   Supports httpx 0.27 and later, below 1.0.
 
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
-  forms, sync, streamed and async, each annotated with the
-  template's own name; the loading pipeline
+  forms, sync, streamed and async, each carrying the template
+  category and annotated with the template's own name; the loading
+  pipeline
   (`Environment._load_template` on every get_template,
   `Environment.compile` inside a cold load) beneath it, behind a
   `loading` switch; every event named by its patched location as
@@ -247,8 +248,8 @@ In development.
   are noted against the request, whether Flask answered 500 or a
   registered handler absorbed a real exception (an `HTTPException`
   is control flow and is not noted); and template rendering records
-  beneath the view that asked for it, named by the spelling the call
-  took (`flask:render_template` or
+  beneath the view that asked for it, carrying the template category,
+  named by the spelling the call took (`flask:render_template` or
   `flask.templating:render_template`), capturing the template name
   while the render context and output stay out of capture. Three
   settings switch the optional layers, all on by default:
