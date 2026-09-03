@@ -326,3 +326,26 @@ In development.
   keeps the driver's events out of the tree and `leaf = false`
   nests them beneath each statement. Supports SQLAlchemy 1.4 and
   later, below 3.
+
+- gRPC (`grpc`, grpcio 1.76+): one instrumentation covers both
+  halves, riding gRPC's own interceptor machinery injected at the
+  public factories: `insecure_channel` and `secure_channel` hand
+  their channel back wrapped with a client interceptor covering all
+  four call shapes, and `server()` gets a server interceptor
+  prepended. Every RPC a channel makes records as one external leaf
+  carrying `system`, `service` and `operation` split from the
+  method path (mapped to `rpc.system`, `rpc.service` and
+  `rpc.method` by the OpenTelemetry export) plus the channel's host
+  and port; an error code is a status, not an exception, and a
+  streamed response records the call rather than its consumption,
+  the database targets' model. Every RPC a server handles records
+  as one `server` boundary spanning the handler's run, a streaming
+  handler's whole generator body included, joining the distributed
+  trace the metadata carries; an `abort()` is control flow recorded
+  as its code with the boundary clean, an escaped exception the
+  failure it is, beside the UNKNOWN gRPC answers. The trace
+  identity is added to each outgoing call's metadata, one the
+  application set left alone. Payloads and metadata values are
+  never recorded. Four settings, all on by default: `client`,
+  `server`, `propagate` and `join`. grpc.aio is not yet covered.
+  Supports grpcio 1.76 and later, below 2.

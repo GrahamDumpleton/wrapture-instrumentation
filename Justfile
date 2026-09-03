@@ -8,6 +8,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 aiohttp_versions := "3.10.11 3.11.18 3.14.3"
 fastapi_versions := "0.110.3 0.126.0 0.141.1"
 flask_versions := "3.0.3 3.1.3"
+grpc_versions := "1.76.0 1.83.1"
 httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
@@ -84,6 +85,19 @@ test-flask-all *ARGS:
     for version in {{flask_versions}}; do
         echo "=== Flask ${version} ==="
         just test-flask "${version}" {{ARGS}}
+    done
+
+# Run the grpc suite against one grpcio version, e.g. `just test-grpc 1.76.0`.
+test-grpc VERSION *ARGS:
+    uv run --with "grpcio=={{VERSION}}" pytest tests/rpc/grpc {{ARGS}}
+
+# Run the grpc suite against every version in grpc_versions.
+test-grpc-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{grpc_versions}}; do
+        echo "=== grpcio ${version} ==="
+        just test-grpc "${version}" {{ARGS}}
     done
 
 # Run the httpx suite against one httpx version, e.g. `just test-httpx 0.27.2`.
@@ -264,6 +278,12 @@ demo-sqlite3 *ARGS:
 # OTLP endpoint.
 demo-sqlalchemy *ARGS:
     uv run --with "wrapture[otel]" python -m demo.database_sqlalchemy {{ARGS}}
+
+# Drive an instrumented gRPC server with an instrumented client,
+# both sides of each RPC in one process sharing one trace id; same
+# shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-grpc *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.rpc_grpc {{ARGS}}
 
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the

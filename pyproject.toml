@@ -43,6 +43,7 @@ Documentation = "https://wrapture.readthedocs.io"
 "aiohttp.web" = "wrapture_instrumentation.server.aiohttp_web:AiohttpWebInstrumentation"
 fastapi = "wrapture_instrumentation.framework.fastapi:FastAPIInstrumentation"
 flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
+grpc = "wrapture_instrumentation.rpc.grpc:GRPCInstrumentation"
 "http.client" = "wrapture_instrumentation.external.http_client:HTTPClientInstrumentation"
 httpx = "wrapture_instrumentation.external.httpx:HTTPXInstrumentation"
 jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
@@ -95,6 +96,10 @@ test = [
 ]
 dev = [
     {include-group = "test"},
+    # grpcio ships no free threaded or 3.15 wheels, so it lives in
+    # the dev group only: synced on the default Python, never on
+    # the full test matrix, whose grpc suite skips itself instead.
+    "grpcio",
     "mypy",
     "ruff",
     "setuptools",
@@ -107,6 +112,20 @@ testpaths = ["tests"]
 python_version = "3.12"
 strict = true
 files = ["src/wrapture_instrumentation", "tests", "demo"]
+
+# grpcio ships no type information; its objects cross this package
+# through Any-typed hook modules anyway, and the interceptor and
+# handler classes necessarily subclass grpc's (Any-typed) bases.
+[[tool.mypy.overrides]]
+module = ["grpc", "grpc.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "wrapture_instrumentation.rpc.grpc.interceptors",
+    "tests.rpc.grpc.service",
+]
+disallow_subclassing_any = false
 
 [tool.ruff]
 line-length = 88
@@ -129,3 +148,4 @@ known-first-party = ["wrapture_instrumentation"]
 # module-level imports legitimately follow that statement.
 [tool.ruff.lint.per-file-ignores]
 "tests/database/sqlalchemy/*" = ["E402"]
+"tests/rpc/grpc/*" = ["E402"]
