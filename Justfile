@@ -6,6 +6,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
 aiohttp_versions := "3.10.11 3.11.18 3.14.3"
+django_versions := "4.2.30 5.2.17 6.0.8"
 fastapi_versions := "0.110.3 0.126.0 0.141.1"
 flask_versions := "3.0.3 3.1.3"
 grpc_versions := "1.76.0 1.83.1"
@@ -60,6 +61,19 @@ test-aiohttp-all *ARGS:
     for version in {{aiohttp_versions}}; do
         echo "=== aiohttp ${version} ==="
         just test-aiohttp "${version}" {{ARGS}}
+    done
+
+# Run the Django suite against one Django version, e.g. `just test-django 4.2.30`.
+test-django VERSION *ARGS:
+    uv run --with "django=={{VERSION}}" pytest tests/framework/django {{ARGS}}
+
+# Run the Django suite against every version in django_versions.
+test-django-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{django_versions}}; do
+        echo "=== Django ${version} ==="
+        just test-django "${version}" {{ARGS}}
     done
 
 # Run the fastapi suite against one fastapi version, e.g. `just test-fastapi 0.110.3`.
@@ -207,6 +221,12 @@ demo-flask *ARGS:
 # endpoint.
 demo-fastapi *ARGS:
     uv run --with "wrapture[otel]" python -m demo.framework_fastapi {{ARGS}}
+
+# Drive a Django application through the real WSGI and ASGI handlers
+# with the django and sqlite3 instrumentations applied together; same
+# shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-django *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.framework_django {{ARGS}}
 
 # Drive a Jinja2 environment directly with the instrumentation applied;
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.

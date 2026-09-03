@@ -41,6 +41,7 @@ Documentation = "https://wrapture.readthedocs.io"
 [project.entry-points."wrapture.instrumentation"]
 "aiohttp.client" = "wrapture_instrumentation.external.aiohttp_client:AiohttpClientInstrumentation"
 "aiohttp.web" = "wrapture_instrumentation.server.aiohttp_web:AiohttpWebInstrumentation"
+django = "wrapture_instrumentation.framework.django:DjangoInstrumentation"
 fastapi = "wrapture_instrumentation.framework.fastapi:FastAPIInstrumentation"
 flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
 grpc = "wrapture_instrumentation.rpc.grpc:GRPCInstrumentation"
@@ -85,6 +86,7 @@ test = [
     # without, and the sqlalchemy suite skips itself where the
     # import fails.
     "aiosqlite; python_version != '3.13'",
+    "django",
     "fastapi",
     "flask",
     "httpx",
@@ -122,10 +124,20 @@ files = ["src/wrapture_instrumentation", "tests", "demo"]
 module = ["grpc", "grpc.*"]
 ignore_missing_imports = true
 
+# Django ships no inline types either (django-stubs is a separate
+# project); the patch modules import it lazily so most of it is Any
+# already, and the test app's model and class-based view necessarily
+# subclass its (Any-typed) bases.
+[[tool.mypy.overrides]]
+module = ["django", "django.*"]
+ignore_missing_imports = true
+
 [[tool.mypy.overrides]]
 module = [
     "wrapture_instrumentation.rpc.grpc.interceptors",
     "tests.rpc.grpc.service",
+    "tests.framework.django.shop.models",
+    "tests.framework.django.shop.views",
 ]
 disallow_subclassing_any = false
 

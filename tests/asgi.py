@@ -4,12 +4,16 @@ protocol, for tests.
 The WSGI driver in tests/wsgi.py plays PEP 3333 exactly so the tests
 own the moments a request event is tied to; this is its ASGI
 counterpart. It builds a complete HTTP scope, supplies a receive
-channel that hands over the request body and then reports
-disconnect, collects every message the application sends, and awaits
-the application to completion under asyncio.run, so a test stays
-synchronous and the request event has closed by the time the driver
-returns. An exception the application raises propagates to the
-caller, exactly as an ASGI server would see it.
+channel that hands over the request body and then stays pending (the
+client is waiting for the response, not going away, so no
+http.disconnect ever arrives within the application's run; an
+application that listens for disconnect concurrently, as Django's
+handler does, sees exactly what a live client looks like), collects
+every message the application sends, and awaits the application to
+completion under asyncio.run, so a test stays synchronous and the
+request event has closed by the time the driver returns. An
+exception the application raises propagates to the caller, exactly
+as an ASGI server would see it.
 
     response = request(app, "GET", "/quote/widget")
     assert response.code == 200
@@ -117,7 +121,8 @@ def request(
     `Response` once its coroutine has completed.
 
     The receive channel hands the whole body over in one
-    http.request message and answers http.disconnect afterwards. An
+    http.request message; a further receive parks forever, the way a
+    server's does while the client waits for its response. An
     exception out of the application propagates; the caller sees it
     exactly as an ASGI server would.
     """
@@ -140,7 +145,14 @@ def request(
                 delivered = True
                 return {"type": "http.request", "body": body, "more_body": False}
 
-            return {"type": "http.disconnect"}
+            # The client is waiting for the response, not going away:
+            # a disconnect never arrives within the application's run,
+            # so a concurrent disconnect listener (Django's handler
+            # holds one beside the request) stays pending rather than
+            # cancelling the request it is listening for.
+
+            await asyncio.Event().wait()
+            raise AssertionError("unreachable")
 
         async def send(message: dict[str, Any]) -> None:
             response.messages.append(message)
