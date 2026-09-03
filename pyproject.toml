@@ -40,15 +40,16 @@ Documentation = "https://wrapture.readthedocs.io"
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
 flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
-jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
-"urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
 "http.client" = "wrapture_instrumentation.external.http_client:HTTPClientInstrumentation"
+httpx = "wrapture_instrumentation.external.httpx:HTTPXInstrumentation"
+jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
+requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
+sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
+"urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
+"werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
+"wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
 "xmlrpc.client" = "wrapture_instrumentation.external.xmlrpc_client:XMLRPCClientInstrumentation"
 "xmlrpc.server" = "wrapture_instrumentation.server.xmlrpc_server:XMLRPCServerInstrumentation"
-"wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
-"werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
-sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
-requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -70,6 +71,7 @@ version = {attr = "wrapture_instrumentation.__version__"}
 # per run by the Justfile's per-target matrix recipes.
 test = [
     "flask",
+    "httpx",
     "jinja2",
     "pytest",
     "requests",

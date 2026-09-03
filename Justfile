@@ -6,6 +6,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
 flask_versions := "3.0.3 3.1.3"
+httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
 
@@ -52,6 +53,19 @@ test-flask-all *ARGS:
     for version in {{flask_versions}}; do
         echo "=== Flask ${version} ==="
         just test-flask "${version}" {{ARGS}}
+    done
+
+# Run the httpx suite against one httpx version, e.g. `just test-httpx 0.27.2`.
+test-httpx VERSION *ARGS:
+    uv run --with "httpx=={{VERSION}}" pytest tests/external/httpx {{ARGS}}
+
+# Run the httpx suite against every version in httpx_versions.
+test-httpx-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{httpx_versions}}; do
+        echo "=== httpx ${version} ==="
+        just test-httpx "${version}" {{ARGS}}
     done
 
 # Run the Jinja2 suite against one Jinja2 version, e.g. `just test-jinja2 3.0.3`.
@@ -109,6 +123,12 @@ demo-http-client *ARGS:
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.
 demo-requests *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_requests {{ARGS}}
+
+# Drive httpx against a local server with the instrumentation applied,
+# sync client then async; same shape as demo-flask, --otel exports to a
+# local OTLP endpoint.
+demo-httpx *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_httpx {{ARGS}}
 
 # Drive xmlrpc.client against a local server with the instrumentation
 # applied; same shape as demo-flask, --otel exports to a local OTLP endpoint.

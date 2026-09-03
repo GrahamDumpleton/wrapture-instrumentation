@@ -149,6 +149,22 @@ In development.
   on the urllib target: `leaf`, `propagate` and `redact`. Supports
   requests 2.31 and later in the 2.x line.
 
+- httpx (`httpx`, httpx 0.27+): every request made through the
+  module-level helpers, a `Client` or an `AsyncClient` records as
+  one external leaf, on `Client.send` or its mirror
+  `AsyncClient.send` (the async event recording around the await),
+  carrying the same external contract keys as the requests target,
+  with the same statuses-not-exceptions rule and the same capture
+  policy (query masked, URL userinfo stripped, body never recorded,
+  response by type). httpx follows redirects only when asked:
+  unasked, the event carries the 3xx the caller saw; followed, the
+  hops resolve in a loop inside the one send, so a redirect is one
+  event whatever the leaf setting says, and the copied headers carry
+  the propagated trace identity on every hop. Unless the caller
+  streams, the event covers the body download too. Three settings,
+  as on the requests target: `leaf`, `propagate` and `redact`.
+  Supports httpx 0.27 and later, below 1.0.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline
