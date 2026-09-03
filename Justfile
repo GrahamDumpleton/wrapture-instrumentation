@@ -6,7 +6,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
 aiohttp_versions := "3.10.11 3.11.18 3.14.3"
-django_versions := "4.2.30 5.2.17 6.0.8"
+django_versions := "4.2.30 5.2.17 6.0.8 6.1.1"
 fastapi_versions := "0.110.3 0.126.0 0.141.1"
 flask_versions := "3.0.3 3.1.3"
 grpc_versions := "1.76.0 1.83.1"
