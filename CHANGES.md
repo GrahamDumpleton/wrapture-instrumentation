@@ -349,3 +349,25 @@ In development.
   never recorded. Four settings, all on by default: `client`,
   `server`, `propagate` and `join`. grpc.aio is not yet covered.
   Supports grpcio 1.76 and later, below 2.
+
+- urllib3 (`urllib3`, urllib3 1.26+): every request made through a
+  pool manager, a connection pool or the module-level `urllib3.request`
+  records as one external leaf on `urlopen`. The two doors a request
+  can enter by (`PoolManager.urlopen`, the redirect-following entry,
+  and `HTTPConnectionPool.urlopen` beneath it, the binding on it
+  covering `HTTPSConnectionPool`) share one depth count, so a
+  request is one event whichever door it entered by, with the
+  manager's delegation to a pool, a followed redirect and a retry
+  folded in. It carries the external contract keys read from the
+  pool instance and the URL together (method, URL without its query
+  or userinfo, host, port, path, and the query with secrets masked),
+  and the status whether returned or, for a real failure, absent
+  with the exception recorded instead. The trace identity from
+  `wrapture.trace_headers()` is added to each request's headers,
+  hop by hop, leaving a header the application set alone; the body
+  is never recorded and the response reduces to its type. Beneath
+  the requests leaf urllib3 stays silent (requests does its wire
+  work through it); standalone, or with the requests leaf off, it
+  records its own. Three settings: `leaf` and `propagate`, both on
+  by default, and `redact`. Supports urllib3 1.26 and later, below
+  3.

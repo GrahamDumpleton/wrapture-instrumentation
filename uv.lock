@@ -1527,6 +1527,7 @@ dev = [
     { name = "setuptools" },
     { name = "sqlalchemy", marker = "python_full_version != '3.13.*'" },
     { name = "starlette" },
+    { name = "urllib3" },
     { name = "uvicorn" },
 ]
 test = [
@@ -1540,6 +1541,7 @@ test = [
     { name = "requests" },
     { name = "sqlalchemy", marker = "python_full_version != '3.13.*'" },
     { name = "starlette" },
+    { name = "urllib3" },
     { name = "uvicorn" },
 ]
 
@@ -1562,6 +1564,7 @@ dev = [
     { name = "setuptools" },
     { name = "sqlalchemy", marker = "python_full_version != '3.13.*'" },
     { name = "starlette" },
+    { name = "urllib3" },
     { name = "uvicorn" },
 ]
 test = [
@@ -1575,6 +1578,7 @@ test = [
     { name = "requests" },
     { name = "sqlalchemy", marker = "python_full_version != '3.13.*'" },
     { name = "starlette" },
+    { name = "urllib3" },
     { name = "uvicorn" },
 ]
 

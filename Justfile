@@ -14,6 +14,7 @@ jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
 sqlalchemy_versions := "1.4.54 2.0.36 2.0.52"
 starlette_versions := "0.47.0 1.0.0 1.6.0"
+urllib3_versions := "1.26.20 2.0.7 2.7.0"
 uvicorn_versions := "0.30.0 0.52.4"
 
 # List available targets.
@@ -165,6 +166,19 @@ test-starlette-all *ARGS:
         just test-starlette "${version}" {{ARGS}}
     done
 
+# Run the urllib3 suite against one urllib3 version, e.g. `just test-urllib3 1.26.20`.
+test-urllib3 VERSION *ARGS:
+    uv run --with "urllib3=={{VERSION}}" pytest tests/external/urllib3 {{ARGS}}
+
+# Run the urllib3 suite against every version in urllib3_versions.
+test-urllib3-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{urllib3_versions}}; do
+        echo "=== urllib3 ${version} ==="
+        just test-urllib3 "${version}" {{ARGS}}
+    done
+
 # Run the uvicorn suite against one uvicorn version, e.g. `just test-uvicorn 0.30.0`.
 test-uvicorn VERSION *ARGS:
     uv run --with "uvicorn=={{VERSION}}" pytest tests/server/uvicorn {{ARGS}}
@@ -219,6 +233,12 @@ demo-http-client *ARGS:
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.
 demo-requests *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_requests {{ARGS}}
+
+# Drive urllib3 against a local server with the instrumentation applied,
+# a manager and a bare pool; same shape as demo-flask, --otel exports to
+# a local OTLP endpoint.
+demo-urllib3 *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_urllib3 {{ARGS}}
 
 # Drive httpx against a local server with the instrumentation applied,
 # sync client then async; same shape as demo-flask, --otel exports to a

@@ -52,6 +52,7 @@ sqlalchemy = "wrapture_instrumentation.database.sqlalchemy:SQLAlchemyInstrumenta
 sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
 starlette = "wrapture_instrumentation.framework.starlette:StarletteInstrumentation"
 "urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
+urllib3 = "wrapture_instrumentation.external.urllib3:Urllib3Instrumentation"
 uvicorn = "wrapture_instrumentation.server.uvicorn:UvicornInstrumentation"
 "werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
 "wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
@@ -92,6 +93,7 @@ test = [
     "requests",
     "sqlalchemy; python_version != '3.13'",
     "starlette",
+    "urllib3",
     "uvicorn",
 ]
 dev = [

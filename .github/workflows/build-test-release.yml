@@ -110,6 +110,12 @@ jobs:
           - target: starlette
             suite: framework/starlette
             version: "1.0.0"
+          - target: urllib3
+            suite: external/urllib3
+            version: "1.26.20"
+          - target: urllib3
+            suite: external/urllib3
+            version: "2.0.7"
           - target: uvicorn
             suite: server/uvicorn
             version: "0.30.0"
