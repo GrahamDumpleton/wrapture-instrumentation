@@ -258,3 +258,26 @@ In development.
   alike) and `redact`
   (query parameters masked by name on top of the built-in sensitive
   set).
+
+- aiohttp (`aiohttp.web`, aiohttp 3.10+): every request an aiohttp
+  server handles records as one `server`-categorised request
+  boundary opened around the application's own dispatch
+  (`Application._handle`, so a sub-application's requests land in
+  the one boundary too), carrying method, path, scheme, peer and the
+  query with secrets masked, annotated once dispatch has run with
+  the matched route's canonical pattern and name (the pattern is
+  what the OpenTelemetry export names the SERVER span by, and maps
+  to `http.route`) and with the response's status: an
+  `HTTPException` is control flow and records as the status it
+  answers, while a real failure records as the exception, the
+  protocol answering its 500 on its own. The boundary joins the
+  distributed trace an arriving `traceparent` header carries, and
+  every handler function is observed as its route registers, so each
+  dispatch records the handler's call beneath the boundary, labelled
+  by the route's name when one was given; class-based views register
+  untouched and are named on the boundary only. Three settings:
+  `ignore_paths` (path globs whose requests record nothing at all,
+  the handler included, the filter evaluated by hand at the block
+  boundary through `RequestFilter.matches()`), `join` (on by
+  default) and `redact` (query parameters masked by name on top of
+  the built-in set). Supports aiohttp 3.10 and later, below 4.

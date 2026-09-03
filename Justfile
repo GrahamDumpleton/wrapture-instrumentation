@@ -5,6 +5,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # One representative release per supported minor of each target, for the
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
+aiohttp_versions := "3.10.11 3.11.18 3.14.3"
 fastapi_versions := "0.110.3 0.126.0 0.141.1"
 flask_versions := "3.0.3 3.1.3"
 httpx_versions := "0.27.2 0.28.1"
@@ -45,6 +46,19 @@ test-all *ARGS:
 # Each target's suite can run against a nominated version of the target,
 # overlaid on the project environment for that run, so the lock's version
 # stays the default and older versions need no environment of their own.
+# Run the aiohttp suite against one aiohttp version, e.g. `just test-aiohttp 3.10.11`.
+test-aiohttp VERSION *ARGS:
+    uv run --with "aiohttp=={{VERSION}}" pytest tests/server/aiohttp_web {{ARGS}}
+
+# Run the aiohttp suite against every version in aiohttp_versions.
+test-aiohttp-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{aiohttp_versions}}; do
+        echo "=== aiohttp ${version} ==="
+        just test-aiohttp "${version}" {{ARGS}}
+    done
+
 # Run the fastapi suite against one fastapi version, e.g. `just test-fastapi 0.110.3`.
 test-fastapi VERSION *ARGS:
     uv run --with "fastapi=={{VERSION}}" pytest tests/framework/fastapi {{ARGS}}
@@ -212,6 +226,12 @@ demo-werkzeug *ARGS:
 # trace; same shape as demo-flask, --otel exports to a local endpoint.
 demo-uvicorn *ARGS:
     uv run --with "wrapture[otel]" python -m demo.server_uvicorn {{ARGS}}
+
+# Serve an aiohttp.web application with the instrumentation applied,
+# driven by an instrumented httpx client, both sides of each request in
+# one trace; same shape as demo-flask, --otel exports to a local endpoint.
+demo-aiohttp *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.server_aiohttp {{ARGS}}
 
 # Drive sqlite3 with the instrumentation applied, with and without SQL
 # text recording; same shape as demo-flask, --otel exports to a local
