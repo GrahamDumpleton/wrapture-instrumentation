@@ -170,6 +170,25 @@ In development.
   on the urllib target: `leaf`, `propagate` and `redact`. Supports
   requests 2.31 and later in the 2.x line.
 
+- FastAPI (`fastapi`, fastapi 0.110+): every request records as one
+  tree through wrapture's recording ASGI middleware, installed by
+  decorating `FastAPI.__call__`, the starlette target's seam one
+  class down, with a per-instance cache of this target's own so the
+  two boundaries stack rather than loop when both are applied, the
+  outer one recording. `APIRoute.handle` annotates the request event
+  with the route's path pattern (an including router's prefix folded
+  in) and name, needed in its own right because `APIRoute` builds
+  and can dispatch without touching the `Route` seams the starlette
+  target patches; `APIRoute.__init__` substitutes observed endpoint
+  functions labelled by the route's name, with dependency
+  injection, response models and OpenAPI generation reading the
+  proxy as the function it wraps, and `include_router()` re-handing
+  an observed endpoint back without stacking a second observation.
+  A validation failure records as its 422 and an unhandled
+  exception lands on the request event beside the 500. Two
+  settings: `ignore_paths` and `redact`, as on the starlette
+  target. Supports fastapi 0.110 and later, below 1.0.
+
 - Starlette (`starlette`, starlette 0.47+): every request records
   as one tree through wrapture's recording ASGI middleware,
   installed by decorating `Starlette.__call__`, the application as a

@@ -56,6 +56,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - target: fastapi
+            suite: framework/fastapi
+            version: "0.110.3"
+          - target: fastapi
+            suite: framework/fastapi
+            version: "0.126.0"
           - target: flask
             suite: framework/flask
             version: "3.0.3"

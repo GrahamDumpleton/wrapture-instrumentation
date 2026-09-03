@@ -5,6 +5,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # One representative release per supported minor of each target, for the
 # per-target matrix recipes below. The instrumentation's `supports` range
 # is kept honest by what these pass on.
+fastapi_versions := "0.110.3 0.126.0 0.141.1"
 flask_versions := "3.0.3 3.1.3"
 httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
@@ -44,6 +45,19 @@ test-all *ARGS:
 # Each target's suite can run against a nominated version of the target,
 # overlaid on the project environment for that run, so the lock's version
 # stays the default and older versions need no environment of their own.
+# Run the fastapi suite against one fastapi version, e.g. `just test-fastapi 0.110.3`.
+test-fastapi VERSION *ARGS:
+    uv run --with "fastapi=={{VERSION}}" pytest tests/framework/fastapi {{ARGS}}
+
+# Run the fastapi suite against every version in fastapi_versions.
+test-fastapi-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{fastapi_versions}}; do
+        echo "=== fastapi ${version} ==="
+        just test-fastapi "${version}" {{ARGS}}
+    done
+
 # Run the Flask suite against one Flask version, e.g. `just test-flask 3.0.3`.
 test-flask VERSION *ARGS:
     uv run --with "flask=={{VERSION}}" pytest tests/framework/flask {{ARGS}}
@@ -131,6 +145,12 @@ test-uvicorn-all *ARGS:
 # OTEL_EXPORTER_OTLP_ENDPOINT says otherwise).
 demo-flask *ARGS:
     uv run --with "wrapture[otel]" python -m demo.framework_flask {{ARGS}}
+
+# Drive a FastAPI application in process with the instrumentation
+# applied; same shape as demo-flask, --otel exports to a local OTLP
+# endpoint.
+demo-fastapi *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.framework_fastapi {{ARGS}}
 
 # Drive a Jinja2 environment directly with the instrumentation applied;
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.

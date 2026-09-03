@@ -39,6 +39,7 @@ Documentation = "https://wrapture.readthedocs.io"
 # name the config's [[instrument]] entry uses. The group name has a
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
+fastapi = "wrapture_instrumentation.framework.fastapi:FastAPIInstrumentation"
 flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
 "http.client" = "wrapture_instrumentation.external.http_client:HTTPClientInstrumentation"
 httpx = "wrapture_instrumentation.external.httpx:HTTPXInstrumentation"
@@ -72,6 +73,7 @@ version = {attr = "wrapture_instrumentation.__version__"}
 # version the lock resolves; older versions of a target are overlaid
 # per run by the Justfile's per-target matrix recipes.
 test = [
+    "fastapi",
     "flask",
     "httpx",
     "jinja2",
