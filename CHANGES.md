@@ -131,6 +131,24 @@ In development.
   default, and reduces to its length otherwise. Fetching is not
   recorded. Supports Python 3.12 and later.
 
+- requests (`requests`, requests 2.31+): every request made through
+  the module-level helpers, `Session.request` or a `Session.send`
+  the application calls itself records as one external leaf on
+  `Session.send`, carrying the external category's contract keys
+  (method, URL without its query string or userinfo, host, port,
+  path, the query with secrets masked, and the status of whatever
+  came back: requests answers a 4xx or 5xx with a response, so an
+  error status is a status, and an exception is recorded only when
+  the exchange really failed). A redirect is one event named by the
+  URL asked for, and unless the caller streams, the event covers the
+  body download too. The trace identity from
+  `wrapture.trace_headers()` is added to every request's headers, a
+  redirect hop's copied headers carrying it onward and a header the
+  application set itself left alone. The request body is never
+  recorded and the response reduces to its type. Three settings, as
+  on the urllib target: `leaf`, `propagate` and `redact`. Supports
+  requests 2.31 and later in the 2.x line.
+
 - Jinja2 (`jinja2`, Jinja2 3.x): every render traced in all its
   forms, sync, streamed and async, each annotated with the
   template's own name; the loading pipeline

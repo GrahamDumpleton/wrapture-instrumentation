@@ -48,6 +48,7 @@ jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
 "wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
 "werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
 sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
+requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -71,6 +72,7 @@ test = [
     "flask",
     "jinja2",
     "pytest",
+    "requests",
 ]
 dev = [
     {include-group = "test"},

@@ -7,6 +7,7 @@ python_versions := "3.12 3.13 3.13t 3.14 3.14t 3.15 3.15t"
 # is kept honest by what these pass on.
 flask_versions := "3.0.3 3.1.3"
 jinja2_versions := "3.0.3 3.1.6"
+requests_versions := "2.31.0 2.32.5"
 
 # List available targets.
 default:
@@ -66,6 +67,19 @@ test-jinja2-all *ARGS:
         just test-jinja2 "${version}" {{ARGS}}
     done
 
+# Run the requests suite against one requests version, e.g. `just test-requests 2.31.0`.
+test-requests VERSION *ARGS:
+    uv run --with "requests=={{VERSION}}" pytest tests/external/requests {{ARGS}}
+
+# Run the requests suite against every version in requests_versions.
+test-requests-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{requests_versions}}; do
+        echo "=== requests ${version} ==="
+        just test-requests "${version}" {{ARGS}}
+    done
+
 # Drive the shop application with the Flask and Jinja2
 # instrumentations applied together, for verifying the results by
 # eye and seeing separate instrumentations meet in one tree: the
@@ -90,6 +104,11 @@ demo-urllib *ARGS:
 # switched off, then standalone; --otel exports to a local OTLP endpoint.
 demo-http-client *ARGS:
     uv run --with "wrapture[otel]" python -m demo.external_http_client {{ARGS}}
+
+# Drive requests against a local server with the instrumentation applied;
+# same shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-requests *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_requests {{ARGS}}
 
 # Drive xmlrpc.client against a local server with the instrumentation
 # applied; same shape as demo-flask, --otel exports to a local OTLP endpoint.
