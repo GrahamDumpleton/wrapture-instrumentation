@@ -118,8 +118,10 @@ def main(arguments: list[str] | None = None) -> None:
             with urllib.request.urlopen(f"{url}/quote?item=widget") as response:
                 print(response.read().decode())
         finally:
+            # werkzeug's serve_forever closes the server itself on
+            # the serving thread; joining waits for that close.
+
             server.shutdown()
-            server.server_close()
             thread.join()
 
     print("\n==== Flask application, one boundary per request ====")
@@ -138,8 +140,10 @@ def main(arguments: list[str] | None = None) -> None:
             with urllib.request.urlopen(f"{url}/hello/pat") as response:
                 print(response.read().decode())
         finally:
+            # werkzeug's serve_forever closes the server itself on
+            # the serving thread; joining waits for that close.
+
             server.shutdown()
-            server.server_close()
             thread.join()
 
     wrapture.remove_sink(tape)

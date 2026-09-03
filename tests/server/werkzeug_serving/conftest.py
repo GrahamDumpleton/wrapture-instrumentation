@@ -48,8 +48,12 @@ def serve(app: Any) -> Iterator[str]:
     try:
         yield url
     finally:
+        # werkzeug's serve_forever calls server_close() itself, in
+        # its finally on the serving thread, so closing here as well
+        # would race it (seen as EBADF on the free-threaded builds).
+        # Joining the thread is what guarantees the close has run.
+
         server.shutdown()
-        server.server_close()
         thread.join()
 
 
