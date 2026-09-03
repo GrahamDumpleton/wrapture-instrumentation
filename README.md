@@ -7,14 +7,16 @@ wrapture attaches bindings to arbitrary Python call sites without
 modifying the code being observed, and its config layer can switch on
 packaged instrumentation for a third-party package by name. This
 project is the collection of that packaged instrumentation: one
-`wrapture.Instrumentation` class per target package (Flask first,
-more to follow), each registered under the bare target name, so that
-tracing a framework is one config entry and no code.
+`wrapture.Instrumentation` class per target package, each registered
+under the bare target name, so that tracing a framework is one config
+entry and no code.
 
 > **Status: pre-alpha.** The package is being built target by target
 > against wrapture's alpha series, with development releases published
-> to [PyPI](https://pypi.org/project/wrapture-instrumentation/). Flask
-> is the first target and covers its basics; see the table below.
+> to [PyPI](https://pypi.org/project/wrapture-instrumentation/). The
+> table below lists what is covered so far, from web frameworks and
+> the servers that carry them to HTTP clients, databases and template
+> engines.
 
 ## Installation
 
@@ -48,8 +50,12 @@ $ python -m wrapture -m myapp
 
 The same config works through
 [autowrapt](https://github.com/GrahamDumpleton/autowrapt) injection
-(`AUTOWRAPT_BOOTSTRAP=wrapture python myapp.py`) and, in a test,
-through `wrapture.instrumentation("flask")` scoping the
+(`AUTOWRAPT_BOOTSTRAP=wrapture python myapp.py`); through
+[manual setup](https://wrapture.readthedocs.io/en/latest/manual-setup.html),
+a few lines in the application's own startup applying the config
+where wrapping the launch from outside is awkward (an embedded
+interpreter, gunicorn and other multi-process managers); and, in a
+test, through `wrapture.instrumentation("flask")` scoping the
 instrumentation to a block. The
 [ad-hoc tracing guide](https://wrapture.readthedocs.io/en/latest/ad-hoc-tracing.html)
 covers the config file itself.
