@@ -100,6 +100,15 @@ settings, and what is deliberately not traced. Settings, further
 choke points and wider version ranges are being added target by
 target.
 
+This package deliberately covers only the standard library and
+third-party packages that can be exercised in-process, with no
+separate backend product or service needed to test against.
+Instrumentation for targets that do need one (a real PostgreSQL,
+MySQL or Redis to speak to, and their driver packages) will be
+provided as separate self-contained packages, one per
+product/service, each carrying its own test arrangements and release
+cadence. No such packages exist yet; they are coming.
+
 ## Adding a target
 
 Each target lives under `src/wrapture_instrumentation/` in a role
@@ -156,4 +165,5 @@ here covers the tests.
 
 ## License
 
-BSD-2-Clause, as wrapture.
+BSD 2-Clause. See
+[LICENSE](https://github.com/GrahamDumpleton/wrapture-instrumentation/blob/develop/LICENSE).
