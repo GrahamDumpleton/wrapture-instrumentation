@@ -11,6 +11,7 @@ flask_versions := "3.0.3 3.1.3"
 httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
+sqlalchemy_versions := "1.4.54 2.0.36 2.0.52"
 starlette_versions := "0.47.0 1.0.0 1.6.0"
 uvicorn_versions := "0.30.0 0.52.4"
 
@@ -122,6 +123,19 @@ test-requests-all *ARGS:
     for version in {{requests_versions}}; do
         echo "=== requests ${version} ==="
         just test-requests "${version}" {{ARGS}}
+    done
+
+# Run the sqlalchemy suite against one sqlalchemy version, e.g. `just test-sqlalchemy 1.4.54`.
+test-sqlalchemy VERSION *ARGS:
+    uv run --with "sqlalchemy=={{VERSION}}" pytest tests/database/sqlalchemy {{ARGS}}
+
+# Run the sqlalchemy suite against every version in sqlalchemy_versions.
+test-sqlalchemy-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{sqlalchemy_versions}}; do
+        echo "=== sqlalchemy ${version} ==="
+        just test-sqlalchemy "${version}" {{ARGS}}
     done
 
 # Run the starlette suite against one starlette version, e.g. `just test-starlette 1.0.0`.
@@ -243,6 +257,13 @@ demo-aiohttp-client *ARGS:
 # OTLP endpoint.
 demo-sqlite3 *ARGS:
     uv run --with "wrapture[otel]" python -m demo.database_sqlite3 {{ARGS}}
+
+# Drive SQLAlchemy with the instrumentation applied, with and without
+# SQL text recording, then composed over the sqlite3 driver
+# instrumentation; same shape as demo-flask, --otel exports to a local
+# OTLP endpoint.
+demo-sqlalchemy *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.database_sqlalchemy {{ARGS}}
 
 # The package depends on a released wrapture. This overlays a checkout
 # of wrapture from the sibling directory as an editable install for the

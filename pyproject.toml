@@ -47,6 +47,7 @@ flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"
 httpx = "wrapture_instrumentation.external.httpx:HTTPXInstrumentation"
 jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
 requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
+sqlalchemy = "wrapture_instrumentation.database.sqlalchemy:SQLAlchemyInstrumentation"
 sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
 starlette = "wrapture_instrumentation.framework.starlette:StarletteInstrumentation"
 "urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
@@ -76,12 +77,19 @@ version = {attr = "wrapture_instrumentation.__version__"}
 # per run by the Justfile's per-target matrix recipes.
 test = [
     "aiohttp",
+    # greenlet, which sqlalchemy pulls in, has no wheel for the free
+    # threaded 3.13 build and fails to compile there; a marker cannot
+    # single out a free threaded build, so both 3.13 builds go
+    # without, and the sqlalchemy suite skips itself where the
+    # import fails.
+    "aiosqlite; python_version != '3.13'",
     "fastapi",
     "flask",
     "httpx",
     "jinja2",
     "pytest",
     "requests",
+    "sqlalchemy; python_version != '3.13'",
     "starlette",
     "uvicorn",
 ]
@@ -116,3 +124,8 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["wrapture_instrumentation"]
+
+# The sqlalchemy suite guards its imports behind importorskip, so its
+# module-level imports legitimately follow that statement.
+[tool.ruff.lint.per-file-ignores]
+"tests/database/sqlalchemy/*" = ["E402"]

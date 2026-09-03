@@ -304,3 +304,25 @@ In development.
   boundary through `RequestFilter.matches()`), `join` (on by
   default) and `redact` (query parameters masked by name on top of
   the built-in set). Supports aiohttp 3.10 and later, below 4.
+
+- SQLAlchemy (`sqlalchemy`, SQLAlchemy 1.4+): every statement an
+  engine executes records as one database leaf at the dialect seam
+  every driver sits behind (`DefaultDialect.do_execute` and its
+  executemany and no-params siblings, which Core and ORM, sync and
+  async engine alike all funnel into; the driver dialects that
+  override `do_executemany` with a fast path, psycopg2's and its
+  kin, are bound in their own right as their modules load). Each
+  event carries the database contract keys `system` (the dialect's
+  name) and `operation` (the SQL's leading keyword), plus the
+  database, host and port from the engine's URL. The connections
+  the pool really opens record as `CONNECT` events with none of
+  their arguments captured (they are the driver's credentials), and
+  the transaction boundaries record on `Connection`'s commit and
+  rollback implementations, the one door every real transaction end
+  passes through, which the pool's reset-on-return rollbacks do not
+  use. Bound parameters are never recorded; the SQL text reduces to
+  its length unless the `statement` setting is on. With an
+  instrumented driver beneath (sqlite3), the default `leaf = true`
+  keeps the driver's events out of the tree and `leaf = false`
+  nests them beneath each statement. Supports SQLAlchemy 1.4 and
+  later, below 3.
