@@ -46,6 +46,7 @@ jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
 requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
 sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
 "urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
+uvicorn = "wrapture_instrumentation.server.uvicorn:UvicornInstrumentation"
 "werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
 "wsgiref.simple_server" = "wrapture_instrumentation.server.wsgiref_simple_server:WSGIRefSimpleServerInstrumentation"
 "xmlrpc.client" = "wrapture_instrumentation.external.xmlrpc_client:XMLRPCClientInstrumentation"
@@ -75,6 +76,7 @@ test = [
     "jinja2",
     "pytest",
     "requests",
+    "uvicorn",
 ]
 dev = [
     {include-group = "test"},

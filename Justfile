@@ -9,6 +9,7 @@ flask_versions := "3.0.3 3.1.3"
 httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
+uvicorn_versions := "0.30.0 0.52.4"
 
 # List available targets.
 default:
@@ -94,6 +95,19 @@ test-requests-all *ARGS:
         just test-requests "${version}" {{ARGS}}
     done
 
+# Run the uvicorn suite against one uvicorn version, e.g. `just test-uvicorn 0.30.0`.
+test-uvicorn VERSION *ARGS:
+    uv run --with "uvicorn=={{VERSION}}" pytest tests/server/uvicorn {{ARGS}}
+
+# Run the uvicorn suite against every version in uvicorn_versions.
+test-uvicorn-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{uvicorn_versions}}; do
+        echo "=== uvicorn ${version} ==="
+        just test-uvicorn "${version}" {{ARGS}}
+    done
+
 # Drive the shop application with the Flask and Jinja2
 # instrumentations applied together, for verifying the results by
 # eye and seeing separate instrumentations meet in one tree: the
@@ -152,6 +166,12 @@ demo-wsgiref *ARGS:
 # per request; same shape as demo-flask, --otel exports to a local endpoint.
 demo-werkzeug *ARGS:
     uv run --with "wrapture[otel]" python -m demo.server_werkzeug {{ARGS}}
+
+# Serve an ASGI application through an instrumented uvicorn server
+# with an instrumented httpx client, both sides of each request in one
+# trace; same shape as demo-flask, --otel exports to a local endpoint.
+demo-uvicorn *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.server_uvicorn {{ARGS}}
 
 # Drive sqlite3 with the instrumentation applied, with and without SQL
 # text recording; same shape as demo-flask, --otel exports to a local

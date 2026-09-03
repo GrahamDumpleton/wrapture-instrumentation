@@ -114,6 +114,27 @@ In development.
   its wrapper for its own lifetime. Two settings: `ignore_paths`
   and `redact`, as on the wsgiref target. Supports werkzeug 3.x.
 
+- uvicorn (`uvicorn`, uvicorn 0.30+): every application the server
+  loads, through `uvicorn.run()`, a `Server` built by hand or
+  gunicorn's `UvicornWorker`, is wrapped in wrapture's recording
+  ASGI middleware at the server's own seam, `Config.load`, without
+  the application changing at all: one request tree per request,
+  named by the application's own module and qualname, carrying
+  method, path, the query with secrets masked, scheme, peer, the
+  status line and the response's streaming shape, and joining the
+  distributed trace an arriving `traceparent` header carries. The
+  wrap lands inside uvicorn's own middlewares, around the
+  application itself, so the event is named by the application and
+  the recorded scope is the one the application sees (with proxy
+  headers on, uvicorn's default, the client and scheme are the
+  forwarded values). One boundary per request however many layers
+  record; websocket and lifespan traffic passes through untouched.
+  Removal restores `Config.load` for configs loaded afterwards; a
+  server already running keeps its wrapper for its own lifetime,
+  the werkzeug trade-off at the same kind of seam. Two settings:
+  `ignore_paths` and `redact`, as on the WSGI server targets.
+  Supports uvicorn 0.30 and later, below 1.0.
+
 - sqlite3 (`sqlite3`, standard library): every query and transaction
   boundary records as one database leaf. The connection and cursor
   types are C types no patch can touch, so the `connect` factories
