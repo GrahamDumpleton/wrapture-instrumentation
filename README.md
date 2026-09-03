@@ -11,12 +11,14 @@ project is the collection of that packaged instrumentation: one
 under the bare target name, so that tracing a framework is one config
 entry and no code.
 
-> **Status: pre-alpha.** The package is being built target by target
-> against wrapture's alpha series, with development releases published
-> to [PyPI](https://pypi.org/project/wrapture-instrumentation/). The
-> table below lists what is covered so far, from web frameworks and
-> the servers that carry them to HTTP clients, databases and template
-> engines.
+> **Status: alpha, ahead of 1.0.0.** Developed against wrapture's
+> alpha series, with pre-releases published to
+> [PyPI](https://pypi.org/project/wrapture-instrumentation/), and
+> until 1.0.0 is final a plain `pip install wrapture-instrumentation`
+> picks up the latest pre-release automatically, so there is no need
+> to pin a specific version. The table below lists what is covered,
+> from web frameworks and the servers that carry them to HTTP
+> clients, databases and template engines.
 
 ## Installation
 
