@@ -23,8 +23,8 @@ The directory has two levels:
   name, and a check that the installed target satisfies the class's
   `supports` range.
 
-Shared helpers live in [tests/conftest.py](tests/conftest.py) and
-[tests/wsgi.py](tests/wsgi.py).
+Shared helpers live in [tests/conftest.py](tests/conftest.py),
+[tests/wsgi.py](tests/wsgi.py) and [tests/asgi.py](tests/asgi.py).
 
 ## The WSGI driver
 
@@ -40,7 +40,11 @@ the driver makes that moment explicit: `request(app, "GET", "/path")`
 reads and closes for the common case, and `consume=False` hands back
 the response with its body unconsumed so a test can check the
 request is still open, then `read()` and `close()` it. The same
-driver serves every WSGI target.
+driver serves every WSGI target. Its ASGI counterpart in
+tests/asgi.py plays the server's side of the ASGI 3 HTTP protocol
+the same way, awaiting the application to completion under
+asyncio.run so the request event has closed when it returns; it
+serves the ASGI framework and server suites.
 
 ## Running the tests
 

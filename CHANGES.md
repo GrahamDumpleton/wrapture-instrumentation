@@ -170,6 +170,28 @@ In development.
   on the urllib target: `leaf`, `propagate` and `redact`. Supports
   requests 2.31 and later in the 2.x line.
 
+- Starlette (`starlette`, starlette 0.47+): every request records
+  as one tree through wrapture's recording ASGI middleware,
+  installed by decorating `Starlette.__call__`, the application as a
+  server calls it, one cached wrapper per application instance. Once
+  routing matches, the request event is annotated with the route's
+  path pattern and name (`Route.handle` being the moment both are
+  known), the pattern being what the OpenTelemetry export maps to
+  `http.route`; a 404 gains no route keys, and a route inside a
+  `Mount` annotates the pattern it owns. Every endpoint function is
+  observed as its `Route` is built, labelled by the route's name,
+  sync and async endpoints alike; class-based endpoints, mounted
+  ASGI applications and `functools.partial` endpoints pass through
+  untouched. Unhandled exceptions need no extra machinery: starlette
+  answers 500 and re-raises, so the request event carries status and
+  exception together, while an `HTTPException` records as nothing
+  but its status. One boundary per request under an instrumented
+  server, the route annotation landing on it. Two settings:
+  `ignore_paths` and `redact`, as on the server targets. Supports
+  starlette 0.47 and later, below 2.0. The suites drive ASGI
+  applications in process through a new tests/asgi.py driver, the
+  ASGI counterpart of the WSGI one.
+
 - httpx (`httpx`, httpx 0.27+): every request made through the
   module-level helpers, a `Client` or an `AsyncClient` records as
   one external leaf, on `Client.send` or its mirror

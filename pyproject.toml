@@ -45,6 +45,7 @@ httpx = "wrapture_instrumentation.external.httpx:HTTPXInstrumentation"
 jinja2 = "wrapture_instrumentation.template.jinja2:Jinja2Instrumentation"
 requests = "wrapture_instrumentation.external.requests:RequestsInstrumentation"
 sqlite3 = "wrapture_instrumentation.database.sqlite3:SQLite3Instrumentation"
+starlette = "wrapture_instrumentation.framework.starlette:StarletteInstrumentation"
 "urllib.request" = "wrapture_instrumentation.external.urllib_request:UrllibInstrumentation"
 uvicorn = "wrapture_instrumentation.server.uvicorn:UvicornInstrumentation"
 "werkzeug.serving" = "wrapture_instrumentation.server.werkzeug_serving:WerkzeugServingInstrumentation"
@@ -76,6 +77,7 @@ test = [
     "jinja2",
     "pytest",
     "requests",
+    "starlette",
     "uvicorn",
 ]
 dev = [

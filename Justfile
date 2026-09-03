@@ -9,6 +9,7 @@ flask_versions := "3.0.3 3.1.3"
 httpx_versions := "0.27.2 0.28.1"
 jinja2_versions := "3.0.3 3.1.6"
 requests_versions := "2.31.0 2.32.5"
+starlette_versions := "0.47.0 1.0.0 1.6.0"
 uvicorn_versions := "0.30.0 0.52.4"
 
 # List available targets.
@@ -95,6 +96,19 @@ test-requests-all *ARGS:
         just test-requests "${version}" {{ARGS}}
     done
 
+# Run the starlette suite against one starlette version, e.g. `just test-starlette 1.0.0`.
+test-starlette VERSION *ARGS:
+    uv run --with "starlette=={{VERSION}}" pytest tests/framework/starlette {{ARGS}}
+
+# Run the starlette suite against every version in starlette_versions.
+test-starlette-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{starlette_versions}}; do
+        echo "=== starlette ${version} ==="
+        just test-starlette "${version}" {{ARGS}}
+    done
+
 # Run the uvicorn suite against one uvicorn version, e.g. `just test-uvicorn 0.30.0`.
 test-uvicorn VERSION *ARGS:
     uv run --with "uvicorn=={{VERSION}}" pytest tests/server/uvicorn {{ARGS}}
@@ -122,6 +136,12 @@ demo-flask *ARGS:
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.
 demo-jinja2 *ARGS:
     uv run --with "wrapture[otel]" python -m demo.template_jinja2 {{ARGS}}
+
+# Drive a Starlette application in process with the instrumentation
+# applied; same shape as demo-flask, --otel exports to a local OTLP
+# endpoint.
+demo-starlette *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.framework_starlette {{ARGS}}
 
 # Drive urllib against a local server with the instrumentation applied;
 # same shape as demo-flask, --otel exports to a local OTLP endpoint.
