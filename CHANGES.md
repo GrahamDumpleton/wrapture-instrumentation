@@ -259,6 +259,29 @@ In development.
   (query parameters masked by name on top of the built-in sensitive
   set).
 
+- aiohttp client (`aiohttp.client`, aiohttp 3.10+): every outbound
+  request made through a `ClientSession`, by the verb helpers,
+  `session.request` or a streamed `async with`, records as one
+  external leaf on `ClientSession._request`, the one coroutine they
+  all pass through, carrying the external category's contract keys
+  (method, URL without its query string or userinfo, host, port,
+  path, the query with secrets masked, and the status whether
+  returned or, for a real connection failure, absent). A followed
+  redirect is one event named by the URL asked for: aiohttp resolves
+  the hops in a loop inside the one call. The coroutine returns when
+  the response headers are in, so the event covers the exchange to
+  the response's start, not the body read afterwards. The trace
+  identity from `wrapture.trace_headers()` is added to each request's
+  headers, leaving a header the application set alone, and aiohttp
+  carries them onto every redirect hop, so both sides of a call
+  between instrumented processes share one trace id. The request body
+  is never recorded and the call's arguments are not captured (the
+  signature is wide, and the method and URL are already the event's
+  contract keys); query supplied through `params=` rather than in the
+  URL is not folded into the recording. Three settings, `leaf` and
+  `propagate` on by default and `redact`, as on the other external
+  clients. Supports aiohttp 3.10 and later, below 4.
+
 - aiohttp (`aiohttp.web`, aiohttp 3.10+): every request an aiohttp
   server handles records as one `server`-categorised request
   boundary opened around the application's own dispatch

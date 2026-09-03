@@ -39,6 +39,7 @@ Documentation = "https://wrapture.readthedocs.io"
 # name the config's [[instrument]] entry uses. The group name has a
 # dot in it, hence the quoted header.
 [project.entry-points."wrapture.instrumentation"]
+"aiohttp.client" = "wrapture_instrumentation.external.aiohttp_client:AiohttpClientInstrumentation"
 "aiohttp.web" = "wrapture_instrumentation.server.aiohttp_web:AiohttpWebInstrumentation"
 fastapi = "wrapture_instrumentation.framework.fastapi:FastAPIInstrumentation"
 flask = "wrapture_instrumentation.framework.flask:FlaskInstrumentation"

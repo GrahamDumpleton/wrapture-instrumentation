@@ -48,7 +48,7 @@ test-all *ARGS:
 # stays the default and older versions need no environment of their own.
 # Run the aiohttp suite against one aiohttp version, e.g. `just test-aiohttp 3.10.11`.
 test-aiohttp VERSION *ARGS:
-    uv run --with "aiohttp=={{VERSION}}" pytest tests/server/aiohttp_web {{ARGS}}
+    uv run --with "aiohttp=={{VERSION}}" pytest tests/external/aiohttp_client tests/server/aiohttp_web {{ARGS}}
 
 # Run the aiohttp suite against every version in aiohttp_versions.
 test-aiohttp-all *ARGS:
@@ -232,6 +232,11 @@ demo-uvicorn *ARGS:
 # one trace; same shape as demo-flask, --otel exports to a local endpoint.
 demo-aiohttp *ARGS:
     uv run --with "wrapture[otel]" python -m demo.server_aiohttp {{ARGS}}
+
+# Drive aiohttp's client against a local server with the instrumentation
+# applied; same shape as demo-flask, --otel exports to a local OTLP endpoint.
+demo-aiohttp-client *ARGS:
+    uv run --with "wrapture[otel]" python -m demo.external_aiohttp {{ARGS}}
 
 # Drive sqlite3 with the instrumentation applied, with and without SQL
 # text recording; same shape as demo-flask, --otel exports to a local
