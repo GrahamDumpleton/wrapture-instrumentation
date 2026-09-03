@@ -372,3 +372,28 @@ In development.
   records its own. Three settings: `leaf` and `propagate`, both on
   by default, and `redact`. Supports urllib3 1.26 and later, below
   3.
+
+- Django (`django`, Django 4.2+): one instrumentation whose events
+  span three categories. Every request records as one tree through
+  the recording WSGI or ASGI middleware wrapped around the handler's
+  own `__call__` (both transports covered from the shared
+  `BaseHandler` dispatch), carrying method, path, redacted query and
+  status, joining the trace a `traceparent` header carries, and
+  annotated with the matched route pattern (`archive/<int:year>/`,
+  exported as `http.route`) and view name, an unmatched 404 left
+  unannotated. Every view is observed at URL resolution
+  (`ResolverMatch` construction), labelled by its URL pattern name,
+  function, class-based and async views alike, one call event per
+  view. An unhandled exception is noted on the request beside its
+  500 at Django's own catch-all; `Http404` and friends are their
+  statuses, not failures. ORM queries record as database leaves at
+  the `CursorWrapper` seam every backend funnels through, carrying
+  system, operation, database and, for a server database, host and
+  port; commit and rollback record beside them; bound parameters are
+  never recorded and the SQL text only behind the `statement`
+  setting; `leaf` folds an instrumented driver (sqlite3) beneath a
+  query. DTL renders record as template events beneath their views,
+  named templates annotated, contexts never captured; Django's
+  Jinja2 backend composes with the jinja2 target instead. Six
+  settings: `ignore_paths`, `redact`, `queries`, `statement`, `leaf`
+  and `templates`. Supports Django 4.2 and later, below 7.
