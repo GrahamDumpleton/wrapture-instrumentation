@@ -160,16 +160,18 @@ def test_a_server_failure_is_recorded_the_same_way(server: Server, tape: Tape) -
 
 
 def test_a_connection_failure_records_the_error_with_no_status(tape: Tape) -> None:
-    # Nothing listens on port 9 on the loopback; the failure is the
-    # ConnectError httpx raises, before any status exists.
+    # Nothing listens on port 9 on the loopback. A refused connection
+    # is a ConnectError and a filtered port (Windows) times out as a
+    # ConnectTimeout; both are the TransportError family, recorded
+    # the same way, before any status exists.
 
-    with pytest.raises(httpx.ConnectError):
+    with pytest.raises(httpx.TransportError):
         httpx.get("http://127.0.0.1:9/ok", timeout=1)
 
     event = only(tape)
     assert event.data["method"] == "GET"
     assert "status" not in event.data
-    assert isinstance(event.exception, httpx.ConnectError)
+    assert isinstance(event.exception, httpx.TransportError)
 
 
 def test_an_unfollowed_redirect_carries_its_own_status(

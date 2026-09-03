@@ -78,16 +78,20 @@ def test_an_error_status_is_a_status_not_an_exception(
 
 
 def test_a_connection_failure_records_the_error_with_no_status(tape: Tape) -> None:
+    # A refused connection is a ConnectError and a filtered port
+    # (Windows) times out as a ConnectTimeout; both are the
+    # TransportError family, recorded the same way.
+
     async def fetch() -> None:
         async with httpx.AsyncClient() as client:
             await client.get("http://127.0.0.1:9/ok", timeout=1)
 
-    with pytest.raises(httpx.ConnectError):
+    with pytest.raises(httpx.TransportError):
         asyncio.run(fetch())
 
     event = only(tape)
     assert "status" not in event.data
-    assert isinstance(event.exception, httpx.ConnectError)
+    assert isinstance(event.exception, httpx.TransportError)
 
 
 def test_a_followed_redirect_is_one_event_named_by_the_original_url(
