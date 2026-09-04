@@ -108,14 +108,25 @@ settings, and what is deliberately not traced. Settings, further
 choke points and wider version ranges are being added target by
 target.
 
+## Companion packages
+
 This package deliberately covers only the standard library and
 third-party packages that can be exercised in-process, with no
 separate backend product or service needed to test against.
-Instrumentation for targets that do need one (a real PostgreSQL,
-MySQL or Redis to speak to, and their driver packages) will be
-provided as separate self-contained packages, one per
-product/service, each carrying its own test arrangements and release
-cadence. No such packages exist yet; they are coming.
+Instrumentation for targets that do need one is provided as separate
+self-contained packages, one per product or service, each carrying
+its own test arrangements (a fake or a real backend to speak to) and
+its own release cadence. They install beside this package and are
+enabled the same way, by the bare target name in an `[[instrument]]`
+entry:
+
+| Package | Targets | Covers |
+| ------- | ------- | ------ |
+| [`wrapture-instrumentation-aws`](https://github.com/GrahamDumpleton/wrapture-instrumentation-aws) | `botocore` | The AWS SDK (boto3 and botocore): every AWS API call as one event named `service/operation` and categorised per service (DynamoDB a datastore, SQS, SNS and Kinesis messaging, Lambda and Step Functions tasks, S3 and the rest external), carrying service, operation, region, endpoint, the resource addressed and the response's status, request id and retry count; payloads never recorded. |
+
+Packages for the databases and caches that need a real server to
+test against (PostgreSQL, MySQL, Redis and their driver packages)
+are coming.
 
 ## Adding a target
 
