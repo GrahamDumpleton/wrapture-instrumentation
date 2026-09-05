@@ -124,9 +124,10 @@ entry:
 | ------- | ------- | ------ |
 | [`wrapture-instrumentation-aws`](https://github.com/GrahamDumpleton/wrapture-instrumentation-aws) | `botocore` | The AWS SDK (boto3 and botocore): every AWS API call as one event named `service/operation` and categorised per service (DynamoDB a datastore, SQS, SNS and Kinesis messaging, Lambda and Step Functions tasks, S3 and the rest external), carrying service, operation, region, endpoint, the resource addressed and the response's status, request id and retry count; payloads never recorded. |
 | [`wrapture-instrumentation-postgresql`](https://github.com/GrahamDumpleton/wrapture-instrumentation-postgresql) | `psycopg`, `psycopg2`, `asyncpg` | The PostgreSQL client libraries, one target per driver: every query as one `database` leaf however it was issued (the execute and fetch families, streamed queries, prepared statements, server-side cursors, COPY), the connection being opened, and each transaction boundary, sync and async alike; each event carrying the system, operation, and the database, host and port reached. Bound parameters are never recorded and the SQL text only with the `statement` setting on. Tested against a real PostgreSQL server in a container. |
+| [`wrapture-instrumentation-mysql`](https://github.com/GrahamDumpleton/wrapture-instrumentation-mysql) | `pymysql`, `MySQLdb`, `aiomysql` | The MySQL client libraries (PyMySQL, mysqlclient and aiomysql), one target per driver, named as the driver is imported and configured: every query as one `database` leaf however it was issued (`execute`, `executemany`, `callproc`, through every cursor class), the connection being opened, and each transaction boundary, sync and async alike; each event carrying the system, operation, and the database, host and port reached. Bound parameters are never recorded and the SQL text only with the `statement` setting on. Tested against a real MySQL server in a container. |
 
-Packages for the other databases and caches that need a real server
-to test against (MySQL, Redis and their driver packages) are coming.
+Packages for the other caches and brokers that need a real server to
+test against (Redis and its driver packages) are coming.
 
 ## Adding a target
 
