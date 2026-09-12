@@ -11,8 +11,8 @@ project is the collection of that packaged instrumentation: one
 under the bare target name, so that tracing a framework is one config
 entry and no code.
 
-> **Status: alpha, ahead of 1.0.0.** Developed against wrapture's
-> alpha series, with pre-releases published to
+> **Status: beta, ahead of 1.0.0.** Developed against wrapture's
+> beta series, with pre-releases published to
 > [PyPI](https://pypi.org/project/wrapture-instrumentation/), and
 > until 1.0.0 is final a plain `pip install wrapture-instrumentation`
 > picks up the latest pre-release automatically, so there is no need
