@@ -1,3 +1,5 @@
+<a href="https://github.com/GrahamDumpleton/wrapture"><img src="https://raw.githubusercontent.com/GrahamDumpleton/wrapture/develop/docs/_static/wrapture-logo.svg" alt="wrapture" width="240"></a>
+
 # wrapture-instrumentation
 
 Instrumentation for common Python packages, applied through
