@@ -81,7 +81,7 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    join = true " in output
+    assert "      join = true" in output
     assert (
         "join the distributed trace an arriving request's traceparent"
         " header carries, rather than minting a fresh identity per"

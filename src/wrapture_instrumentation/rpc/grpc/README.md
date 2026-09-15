@@ -38,7 +38,7 @@ block: grpc
   `insecure_channel` and `secure_channel` hand their channel back
   wrapped with a client interceptor covering all four call shapes,
   and `server()` gets a server interceptor prepended. The `client`
-  and `server` settings switch either half off; by default both are
+  and `server` aspects switch either half off; by default both are
   on, and a process that only ever creates channels simply never
   builds a server interceptor.
 
@@ -81,21 +81,44 @@ block: grpc
   interceptor interfaces are a separate surface, left to a
   follow-up.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `client` | every RPC made through a channel, all four call shapes, as one external leaf | payloads never captured (`capture_args = "none"`, `capture_result = "types"`), an explicit capture key under the aspect replacing that |
+| `server` | every RPC the server handles, as a request boundary spanning the handler's run | a `block()` event, which captures no values: the aspect takes `stack` and `leaf` and refuses the capture keys |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.client]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `client = false` on the entry means the same. There is no primary
+aspect: the two are peers, so their keys are always written under their
+sub-tables. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `client` | `true` | Record every RPC made through a channel as an external leaf, with the trace identity carried in its metadata. |
-| `server` | `true` | Record every RPC the server handles as a request boundary spanning the handler's run. |
-| `propagate` | `true` | Add the current trace identity to each outgoing RPC's metadata so the service called can join the trace. |
-| `join` | `true` | Join the distributed trace an incoming RPC's metadata carries instead of rooting a new one. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `propagate` | `client` | `true` | Add the current trace identity to each outgoing RPC's metadata so the service called can join the trace. |
+| `join` | `server` | `true` | Join the distributed trace an incoming RPC's metadata carries instead of rooting a new one. |
 
 ```toml
 [[instrument]]
 name = "grpc"
 server = false
-```
 
+[instrument.client]
+propagate = false
+```
 ## How it patches
 
 For the implementation detail see the module docstring of

@@ -77,20 +77,43 @@ the `Route` seams the starlette target patches. Under an
 instrumented server (the `uvicorn` target), the same rule holds: one
 boundary per request, however many layers record.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the FastAPI application call, one request event per request | the query string with the built-in sensitive names masked, plus any a `redact` list adds |
+| `views` | endpoint functions, observed as their routes are built | arguments as their types (`capture_args = "types"`, a parsed body arriving as a model that any richer level would print in full) and the result as its shape (`capture_result = "shape"`), since a dict or list returned is the response body |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.views]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `views = false` on the entry means the same. The primary aspect's
+keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its endpoint included. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `ignore_paths` | `requests` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its endpoint included. |
 
 ```toml
 [[instrument]]
 name = "fastapi"
 ignore_paths = ["/health"]
 redact = ["voucher"]
-```
 
+[instrument.views]
+capture_result = "types"
+```
 ## How it patches
 
 For the implementation detail see the module docstrings of

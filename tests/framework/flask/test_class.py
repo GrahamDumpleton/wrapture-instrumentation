@@ -1,4 +1,4 @@
-"""The class as wrapture reads it: its data, its (absence of)
+"""The class as wrapture reads it: its data, its aspects and
 settings, and the installed Flask satisfying its supports range."""
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from importlib import metadata
 # so the applying test below works with this file run on its own.
 import flask  # noqa: F401
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, Setting, instrumentation
 
 from wrapture_instrumentation.framework.flask import FlaskInstrumentation
 
@@ -21,21 +21,49 @@ def test_class_data() -> None:
     assert FlaskInstrumentation.supports == ">=3.0,<4"
     assert FlaskInstrumentation.requires == ()
 
-    # The two category switches, both on by default; the core layers
-    # (requests, routes, views, unhandled errors) have no switch.
-
-    assert set(FlaskInstrumentation.settings) == {
-        "ignore_paths",
-        "redact",
+    settings = FlaskInstrumentation.settings
+    assert list(settings) == [
+        "requests",
+        "views",
         "lifecycle",
-        "handled_errors",
+        "handlers",
         "templates",
-    }
-    assert FlaskInstrumentation.settings["ignore_paths"].default == []
-    assert FlaskInstrumentation.settings["redact"].default == []
-    assert FlaskInstrumentation.settings["lifecycle"].default is True
-    assert FlaskInstrumentation.settings["handled_errors"].default is True
-    assert FlaskInstrumentation.settings["templates"].default is True
+        "handled_errors",
+    ]
+
+    requests = settings["requests"]
+    assert isinstance(requests, Aspect)
+    assert requests.primary is True
+    assert requests.defaults == {}
+    assert set(requests.settings) == {"ignore_paths"}
+    assert requests.settings["ignore_paths"].default == []
+
+    views = settings["views"]
+    assert isinstance(views, Aspect)
+    assert views.primary is False
+    assert views.defaults == {"capture_result": "shape"}
+    assert set(views.settings) == set()
+
+    lifecycle = settings["lifecycle"]
+    assert isinstance(lifecycle, Aspect)
+    assert lifecycle.primary is False
+    assert lifecycle.defaults == {}
+    assert set(lifecycle.settings) == set()
+
+    handlers = settings["handlers"]
+    assert isinstance(handlers, Aspect)
+    assert handlers.primary is False
+    assert handlers.defaults == {"capture_result": "shape"}
+    assert set(handlers.settings) == set()
+
+    templates = settings["templates"]
+    assert isinstance(templates, Aspect)
+    assert templates.primary is False
+    assert templates.defaults == {}
+    assert set(templates.settings) == set()
+
+    assert isinstance(settings["handled_errors"], Setting)
+    assert settings["handled_errors"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -51,13 +79,32 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = FlaskInstrumentation()
 
-    assert instance.settings == {
-        "ignore_paths": [],
-        "redact": [],
-        "lifecycle": True,
-        "handled_errors": True,
-        "templates": True,
-    }
+    requests = instance.settings["requests"]
+    assert requests.enabled is True
+    assert requests.options == {}
+    assert requests.settings == {"ignore_paths": []}
+
+    views = instance.settings["views"]
+    assert views.enabled is True
+    assert views.options == {"capture_result": "shape"}
+    assert views.settings == {}
+
+    lifecycle = instance.settings["lifecycle"]
+    assert lifecycle.enabled is True
+    assert lifecycle.options == {}
+    assert lifecycle.settings == {}
+
+    handlers = instance.settings["handlers"]
+    assert handlers.enabled is True
+    assert handlers.options == {"capture_result": "shape"}
+    assert handlers.settings == {}
+
+    templates = instance.settings["templates"]
+    assert templates.enabled is True
+    assert templates.options == {}
+    assert templates.settings == {}
+
+    assert instance.settings["handled_errors"] is True
     assert instance.applied == ()
 
     # The trigger set the decorators declared, all still to fire on a
@@ -72,12 +119,28 @@ def test_constructing_without_settings_works() -> None:
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    # Only the declared switches are accepted: an [[instrument]] entry
-    # carrying any other key fails at config load rather than being
-    # silently ignored.
-
     with pytest.raises(ConfigError, match="verbosity"):
         FlaskInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        FlaskInstrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        FlaskInstrumentation(requests={"verbosity": 2})
+
+
+def test_a_key_the_boundary_cannot_honour_is_refused_when_applied() -> None:
+    # The request boundary is wrapture's WSGI middleware, which takes
+    # no stack; the refusal comes from configure(), so it surfaces as
+    # the instrumentation applies rather than being silently ignored.
+
+    with pytest.raises(ConfigError, match="aspect 'requests' cannot apply"):
+        with instrumentation(FlaskInstrumentation, requests={"stack": "caller"}):
+            pass
 
 
 def test_the_installed_flask_is_within_supports() -> None:

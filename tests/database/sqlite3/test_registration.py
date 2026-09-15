@@ -68,7 +68,7 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    statement = false " in output
+    assert "      statement = false" in output
     assert "record the SQL text as written on each query event" in output
 
 

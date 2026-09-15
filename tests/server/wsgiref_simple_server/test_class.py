@@ -12,7 +12,7 @@ import warnings
 import wsgiref.simple_server  # noqa: F401
 
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.server.wsgiref_simple_server import (
     WSGIRefSimpleServerInstrumentation,
@@ -25,12 +25,15 @@ def test_class_data() -> None:
     assert WSGIRefSimpleServerInstrumentation.requires == ()
     assert WSGIRefSimpleServerInstrumentation.supports == ">=3.12"
 
-    assert set(WSGIRefSimpleServerInstrumentation.settings) == {
-        "ignore_paths",
-        "redact",
-    }
-    assert WSGIRefSimpleServerInstrumentation.settings["ignore_paths"].default == []
-    assert WSGIRefSimpleServerInstrumentation.settings["redact"].default == []
+    settings = WSGIRefSimpleServerInstrumentation.settings
+    assert list(settings) == ["requests"]
+
+    requests = settings["requests"]
+    assert isinstance(requests, Aspect)
+    assert requests.primary is True
+    assert requests.defaults == {}
+    assert set(requests.settings) == {"ignore_paths"}
+    assert requests.settings["ignore_paths"].default == []
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -42,14 +45,27 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = WSGIRefSimpleServerInstrumentation()
 
-    assert instance.settings == {"ignore_paths": [], "redact": []}
+    requests = instance.settings["requests"]
+    assert requests.enabled is True
+    assert requests.options == {}
+    assert requests.settings == {"ignore_paths": []}
     assert instance.applied == ()
     assert instance.pending == ("wsgiref.simple_server",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="leaf"):
-        WSGIRefSimpleServerInstrumentation(leaf=False)
+    with pytest.raises(ConfigError, match="verbosity"):
+        WSGIRefSimpleServerInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        WSGIRefSimpleServerInstrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        WSGIRefSimpleServerInstrumentation(requests={"verbosity": 2})
 
 
 def test_the_running_python_is_within_supports() -> None:

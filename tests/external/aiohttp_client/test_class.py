@@ -11,7 +11,7 @@ from importlib import metadata
 # file run on its own.
 import aiohttp.client  # noqa: F401
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.external.aiohttp_client import (
     AiohttpClientInstrumentation,
@@ -24,14 +24,15 @@ def test_class_data() -> None:
     assert AiohttpClientInstrumentation.requires == ()
     assert AiohttpClientInstrumentation.supports == ">=3.10,<4"
 
-    assert set(AiohttpClientInstrumentation.settings) == {
-        "leaf",
-        "propagate",
-        "redact",
-    }
-    assert AiohttpClientInstrumentation.settings["leaf"].default is True
-    assert AiohttpClientInstrumentation.settings["propagate"].default is True
-    assert AiohttpClientInstrumentation.settings["redact"].default == []
+    settings = AiohttpClientInstrumentation.settings
+    assert list(settings) == ["requests"]
+
+    requests = settings["requests"]
+    assert isinstance(requests, Aspect)
+    assert requests.primary is True
+    assert requests.defaults == {"leaf": True}
+    assert set(requests.settings) == {"propagate"}
+    assert requests.settings["propagate"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -43,14 +44,27 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = AiohttpClientInstrumentation()
 
-    assert instance.settings == {"leaf": True, "propagate": True, "redact": []}
+    requests = instance.settings["requests"]
+    assert requests.enabled is True
+    assert requests.options == {"leaf": True}
+    assert requests.settings == {"propagate": True}
     assert instance.applied == ()
     assert instance.pending == ("aiohttp.client",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="ignore_hosts"):
-        AiohttpClientInstrumentation(ignore_hosts=["localhost"])
+    with pytest.raises(ConfigError, match="verbosity"):
+        AiohttpClientInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        AiohttpClientInstrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        AiohttpClientInstrumentation(requests={"verbosity": 2})
 
 
 def test_a_setting_of_the_wrong_type_is_refused() -> None:

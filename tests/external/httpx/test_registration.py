@@ -60,12 +60,9 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    leaf = true " in output
-    assert (
-        "record each send as a terminal node, so anything recorded beneath"
-        " it stays out of the tree" in output
-    )
-    assert "    propagate = true " in output
+    assert "      leaf = true" in output
+    assert "the request boundary: every send through a client, sync or async" in output
+    assert "      propagate = true" in output
     assert (
         "add the current trace identity to each request's headers so the"
         " service called can join the trace" in output
@@ -78,4 +75,4 @@ def test_the_toml_template_carries_the_settings() -> None:
     assert '[[instrument]]\nname = "httpx"\nenabled = false' in output
     assert "# leaf = true" in output
     assert "# propagate = true" in output
-    assert "# redact = []" in output
+    assert "# [instrument.requests]" in output

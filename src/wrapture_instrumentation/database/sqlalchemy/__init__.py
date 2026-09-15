@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
 from . import dialects, engine_base, engine_default
 
@@ -36,20 +36,27 @@ class SQLAlchemyInstrumentation(wrapture.Instrumentation):
     supports = ">=1.4,<3"
     removable = True
 
+    # The aspects, each a terminal node by default so anything recorded
+    # beneath (an instrumented driver such as sqlite3) stays out of the
+    # tree. Statements is primary, so its keys may be written flat.
+
     settings = {
-        "leaf": Setting(
-            True,
-            "record each statement as a terminal node, so anything"
-            " recorded beneath it (an instrumented driver such as"
-            " sqlite3) stays out of the tree",
+        "statements": Aspect(
+            "every statement the dialect executes, as database events",
+            primary=True,
+            leaf=True,
+            statement=Setting(
+                False,
+                "record the SQL text as compiled on each statement event;"
+                " off by default because text() fragments pass through as"
+                " the application wrote them, literals included; SQL the"
+                " expression language compiles carries placeholders, its"
+                " parameters sent separately and never recorded",
+            ),
         ),
-        "statement": Setting(
-            False,
-            "record the SQL text as compiled on each statement event;"
-            " off by default because text() fragments pass through as"
-            " the application wrote them, literals included; SQL the"
-            " expression language compiles carries placeholders, its"
-            " parameters sent separately and never recorded",
+        "connections": Aspect(
+            "connections opened and transactions ended, as database events",
+            leaf=True,
         ),
     }
 

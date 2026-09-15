@@ -92,9 +92,9 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    ignore_paths = [] " in output
+    assert "      ignore_paths = []" in output
     assert "request paths not to record, as path" in output
-    assert "    redact = [] " in output
+    assert "    requests (primary):" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:
@@ -102,4 +102,4 @@ def test_the_toml_template_carries_the_settings() -> None:
 
     assert '[[instrument]]\nname = "wsgiref.simple_server"\nenabled = false' in output
     assert "# ignore_paths = []" in output
-    assert "# redact = []" in output
+    assert "# [instrument.requests]" in output

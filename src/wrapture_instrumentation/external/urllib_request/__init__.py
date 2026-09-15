@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
 from . import request
 
@@ -32,22 +32,20 @@ class UrllibInstrumentation(wrapture.Instrumentation):
     supports = ">=3.12"
     removable = True
 
+    # One aspect, the request boundary, so its keys may be written flat
+    # on the entry; a leaf by default, so anything recorded beneath a
+    # request stays out of the tree.
+
     settings = {
-        "leaf": Setting(
-            True,
-            "record each open as a terminal node, so the nested opens"
-            " behind a redirect and anything recorded beneath it stay"
-            " out of the tree",
-        ),
-        "propagate": Setting(
-            True,
-            "add the current trace identity to each request's headers"
-            " so the service called can join the trace",
-        ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "requests": Aspect(
+            "the request boundary: every open through an opener",
+            primary=True,
+            leaf=True,
+            propagate=Setting(
+                True,
+                "add the current trace identity to each request's headers"
+                " so the service called can join the trace",
+            ),
         ),
     }
 

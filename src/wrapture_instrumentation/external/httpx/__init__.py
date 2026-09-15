@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
 from . import _client
 
@@ -28,21 +28,20 @@ class HTTPXInstrumentation(wrapture.Instrumentation):
     supports = ">=0.27,<1"
     removable = True
 
+    # One aspect, the request boundary, so its keys may be written flat
+    # on the entry; a leaf by default, so anything recorded beneath a
+    # request stays out of the tree.
+
     settings = {
-        "leaf": Setting(
-            True,
-            "record each send as a terminal node, so anything recorded"
-            " beneath it stays out of the tree",
-        ),
-        "propagate": Setting(
-            True,
-            "add the current trace identity to each request's headers"
-            " so the service called can join the trace",
-        ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "requests": Aspect(
+            "the request boundary: every send through a client, sync or async",
+            primary=True,
+            leaf=True,
+            propagate=Setting(
+                True,
+                "add the current trace identity to each request's headers"
+                " so the service called can join the trace",
+            ),
         ),
     }
 

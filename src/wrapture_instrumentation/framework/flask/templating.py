@@ -71,18 +71,30 @@ def masked(name: str | None, value: Any) -> Any:
     return "<context>"
 
 
+masked.description = "template names pass, the context and output are masked"  # type: ignore[attr-defined]
+
+
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the four rendering functions on flask.templating and on
     the flask namespace, apply them as one group, and register the
     group's removal as this trigger's cleanup.
 
-    `module` is the flask package. The templates setting gates the
-    whole trigger: with it off, nothing binds and there is nothing to
-    clean up.
+    `module` is the flask package. The templates aspect gates the whole
+    trigger, with it off nothing binds and there is nothing to clean
+    up, and its recording options splat over the masking policy: an
+    explicit capture key under the aspect replaces the package's own.
     """
 
-    if not instrumentation.settings["templates"]:
+    templates = instrumentation.settings["templates"]
+    if not templates.enabled:
         return
+
+    options: dict[str, Any] = {
+        "category": "template",
+        "capture_args": masked,
+        "capture_result": masked,
+        **templates.options,
+    }
 
     # The same four functions are deliberately bound in both places,
     # each under its own derived path, so both spellings trace and an
@@ -94,13 +106,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     for owner, prefix in ((module.templating, "templating"), (module, "namespace")):
         for name in FUNCTIONS:
-            bound = wrapture.binding(
-                owner,
-                name,
-                category="template",
-                capture_args=masked,
-                capture_result=masked,
-            )
+            bound = wrapture.binding(owner, name, **options)
             named[f"{prefix}_{name}"] = bound
 
     group = wrapture.bindings(**named)

@@ -39,12 +39,14 @@ onto the boundary, and only when the code in flight is inside a
 boundary this instrumentation opened, so a documentation server's
 GET pages and any unrelated in-flight event are left alone.
 
-The capture policy mirrors the client side: the params reduce to a
-count and every dispatch result to its type, both being application
-data whatever their shape; the request body is never read here at
-all. A `Fault` a procedure raises is recorded on its dispatch event
-as any exception is, while the response it marshals into is still
-the 200 the boundary reports, the failure being the application's.
+The capture policy, the `methods` aspect's declared defaults, mirrors
+the client side: the params reduce to a count and the dispatch result
+to its shape, both being application data whatever their form; the
+request body is never read here at all. A `[instrument.methods]`
+table replaces either, or switches the dispatch binding off. A
+`Fault` a procedure raises is recorded on its dispatch event as any
+exception is, while the response it marshals into is still the 200
+the boundary reports, the failure being the application's.
 """
 
 from __future__ import annotations
@@ -78,12 +80,20 @@ def captured(name: str | None, value: Any) -> Any:
     return value
 
 
+captured.description = "params as a count"  # type: ignore[attr-defined]
+
+
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the POST handler as the request boundary, each dispatched
     procedure as an event beneath it, and the response status onto
     the boundary; register their removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
+    block_options = {
+        key: value
+        for key, value in requests.options.items()
+        if key in ("leaf", "stack")
+    }
 
     def boundary(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -94,7 +104,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         # them are recorded.
 
         joins = None
-        if settings["join"]:
+        if requests["join"]:
             joins = {str(name): str(value) for name, value in instance.headers.items()}
 
         data = {
@@ -104,7 +114,13 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             "client": str(instance.client_address[0]),
         }
 
-        with wrapture.block("xmlrpc.server", category="server", data=data, joins=joins):
+        with wrapture.block(
+            "xmlrpc.server",
+            category="server",
+            data=data,
+            joins=joins,
+            **block_options,
+        ):
             token = _inside.set(True)
             try:
                 return wrapped(*args, **kwargs)
@@ -134,20 +150,26 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     handler = wrapture.binding(module.SimpleXMLRPCRequestHandler, "do_POST", when=False)
     handler.on_call.decorates(boundary)
 
-    dispatched = wrapture.binding(
-        module.SimpleXMLRPCDispatcher,
-        "_dispatch",
-        capture_args=captured,
-        capture_result=captured,
-    )
-    dispatched.on_call.decorates(dispatch)
-
     response = wrapture.binding(
         module.SimpleXMLRPCRequestHandler, "send_response", when=False
     )
     response.on_call.decorates(status)
 
-    group = wrapture.bindings(handler=handler, dispatch=dispatched, status=response)
+    named: dict[str, wrapture.Binding] = {"handler": handler, "status": response}
+
+    # The methods aspect gates the dispatch binding and supplies its
+    # recording options, the params-to-count policy and the shape of
+    # the result being its declared defaults.
+
+    methods = instrumentation.settings["methods"]
+    if methods.enabled:
+        dispatched = wrapture.binding(
+            module.SimpleXMLRPCDispatcher, "_dispatch", **methods.options
+        )
+        dispatched.on_call.decorates(dispatch)
+        named["dispatch"] = dispatched
+
+    group = wrapture.bindings(**named)
     group.apply()
 
     instrumentation.on_cleanup(group.remove)

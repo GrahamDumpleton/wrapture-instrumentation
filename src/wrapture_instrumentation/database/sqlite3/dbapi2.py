@@ -33,12 +33,16 @@ spent iterating rows is not attributed to the database.
 Every event carries `system` ("sqlite") and `operation` (the SQL's
 leading keyword, or CONNECT, COMMIT, ROLLBACK), the database
 category's contract keys. The SQL text itself is recorded only when
-the `statement` setting is on, as written and never with its bound
-parameters, which no setting captures; with the setting off the
-text reduces to its length in the captured arguments. There is no
-obfuscation at this layer: parameterized queries are safe to record
-as written, and anything else is the reason the setting is off by
-default.
+the statements aspect's `statement` setting is on, as written and never
+with its bound parameters, which no setting captures; with the
+setting off the text reduces to its length in the captured
+arguments, the package's own capture policy, which an explicit
+capture key under the aspect replaces. There is no obfuscation at this
+layer: parameterized queries are safe to record as written, and
+anything else is the reason the setting is off by default. The
+execute family takes the `statements` aspect's recording options and
+the connect and transaction bindings the `connections` aspect's; both
+aspects are leaves by default.
 """
 
 from __future__ import annotations
@@ -157,8 +161,9 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the connect factories and the proxy methods; register
     their removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
-    record_statement = bool(settings["statement"])
+    statements = instrumentation.settings["statements"]
+    connections = instrumentation.settings["connections"]
+    record_statement = bool(statements["statement"])
 
     def queries(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -214,15 +219,21 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return Connection(wrapped(*args, **kwargs))
 
-    def database_binding(target: Any, name: str, label: str | None = None) -> Any:
+    def database_binding(
+        target: Any, name: str, aspect: Any, label: str | None = None
+    ) -> Any:
+        # The aspect's recording options splat over the package's own,
+        # so an explicit capture key under the aspect replaces the
+        # masking policy and the declared leaf default holds.
+
         return wrapture.binding(
             target,
             name,
             label=label,
             category="database",
-            leaf=True,
             capture_args=captured,
             capture_result=captured,
+            **aspect.options,
         )
 
     # The factories: both module attributes, the same function under
@@ -230,10 +241,10 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     # paths say sqlite3:connect and sqlite3.dbapi2:connect already,
     # so neither takes a label.
 
-    connect = database_binding(module, "connect")
+    connect = database_binding(module, "connect", connections)
     connect.on_call.decorates(opens)
 
-    dbapi2_connect = database_binding(module.dbapi2, "connect")
+    dbapi2_connect = database_binding(module.dbapi2, "connect", connections)
     dbapi2_connect.on_call.decorates(opens)
 
     named: dict[str, wrapture.Binding] = {
@@ -247,7 +258,9 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     for owner, cls in (("Cursor", Cursor), ("Connection", Connection)):
         for method in ("execute", "executemany", "executescript"):
-            bound = database_binding(cls, method, label=f"sqlite3:{owner}.{method}")
+            bound = database_binding(
+                cls, method, statements, label=f"sqlite3:{owner}.{method}"
+            )
             bound.on_call.decorates(queries)
             named[f"{owner.lower()}_{method}"] = bound
 
@@ -256,13 +269,13 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     for method, operation in (("commit", "COMMIT"), ("rollback", "ROLLBACK")):
         bound = database_binding(
-            Connection, method, label=f"sqlite3:Connection.{method}"
+            Connection, method, connections, label=f"sqlite3:Connection.{method}"
         )
         bound.on_call.decorates(performs(operation))
         named[method] = bound
 
     closes = database_binding(
-        Connection, "__exit__", label="sqlite3:Connection.__exit__"
+        Connection, "__exit__", connections, label="sqlite3:Connection.__exit__"
     )
     closes.on_call.decorates(leaves)
     named["exit"] = closes

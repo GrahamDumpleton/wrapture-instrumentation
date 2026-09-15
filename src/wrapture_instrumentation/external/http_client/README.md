@@ -77,23 +77,42 @@ urllib.request:OpenerDirector.open(fullurl='http://127.0.0.1:8000/orders', ...)
 
 - The capture policy is deliberate about sensitive data: the query
   string in `putrequest`'s url is recorded with the built-in
-  sensitive names masked and the `redact` setting's names masked on
+  sensitive names masked and the `redact` key's names masked on
   top, the request body reduces to its size, the response to its
   type, and header values are never recorded (`putheader` is not
   patched, precisely because headers are where credentials travel).
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the four phases of each exchange on `HTTPConnection`: `connect`, `putrequest`, `endheaders` and `getresponse` | the request line's query through `capture_args` (a `redact` list composes into it); bodies as sizes and responses as types whatever the level |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `redact` | `[]` | Query string parameters to mask by name in the recorded request line, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the server; only the recording is masked. |
+No settings of its own: the recording keys under the aspect are the
+whole of what the entry takes.
 
 ```toml
 [[instrument]]
 name = "http.client"
 redact = ["voucher"]
 ```
-
 ## How it patches
 
 For the implementation detail, including why `request()` and

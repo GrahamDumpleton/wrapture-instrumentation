@@ -21,8 +21,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import db, dispatch, exceptions, handlers, resolvers, templates
 
 
@@ -46,42 +47,51 @@ class DjangoInstrumentation(wrapture.Instrumentation):
     supports = ">=4.2,<7"
     removable = True
 
-    # The category switches: which layers of the instrumentation are
-    # in play. The request tree, route annotation, view observation
-    # and unhandled-exception noting are the point and have no switch.
+    # The aspects: the groups of call sites the instrumentation binds,
+    # each with its switch and its recording defaults. The request
+    # boundary is the primary aspect, so its keys may be written flat on
+    # the entry; the route annotation is the point and belongs to no
+    # aspect.
 
     settings = {
-        "ignore_paths": Setting(
-            [],
-            "request paths not to record, as path globs ('/health', '/static/*')",
+        "requests": Aspect(
+            "the request boundary: the WSGI and ASGI handlers, one event per request",
+            primary=True,
+            ignore_paths=Setting(
+                [],
+                "request paths not to record, as path globs ('/health', '/static/*')",
+            ),
         ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "views": Aspect(
+            "view functions, observed as URLs resolve",
+            capture_args=resolvers.masked,
+            capture_result="shape",
         ),
-        "queries": Setting(
-            True,
-            "record ORM statements and transaction ends as database events",
+        "queries": Aspect(
+            "ORM statements and transaction ends, as database events",
+            leaf=True,
+            statement=Setting(
+                False,
+                "record the SQL text on each query event; off by default"
+                " because raw SQL and literal filters can carry data; the"
+                " ORM's bound parameters are sent separately and never"
+                " recorded",
+            ),
         ),
-        "statement": Setting(
-            False,
-            "record the SQL text on each query event; off by default"
-            " because raw SQL and literal filters can carry data; the"
-            " ORM's bound parameters are sent separately and never"
-            " recorded",
+        "templates": Aspect(
+            "Django template rendering beneath the view that asked for it",
         ),
-        "leaf": Setting(
-            True,
-            "record each query as a terminal node, so anything"
-            " recorded beneath it (an instrumented driver such as"
-            " sqlite3) stays out of the tree",
-        ),
-        "templates": Setting(
-            True,
-            "observe Django template rendering beneath the view that asked for it",
+        "exceptions": Aspect(
+            "noting an unhandled exception against its request",
         ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the boundary middleware and the
+        exception noting cannot honour."""
+
+        aspects.honours(self, "requests", "capture_args", "capture_result", "leaf")
+        aspects.honours(self, "exceptions")
 
     @wrapture.instrumentation_hook("django.core.handlers.wsgi")
     def django_core_handlers_wsgi(self, name: str, module: Any) -> None:

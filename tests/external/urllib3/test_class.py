@@ -12,7 +12,7 @@ import pytest
 # import, so the applying test below works with this file run on its
 # own.
 import urllib3  # noqa: F401
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.external.urllib3 import Urllib3Instrumentation
 
@@ -23,10 +23,15 @@ def test_class_data() -> None:
     assert Urllib3Instrumentation.requires == ()
     assert Urllib3Instrumentation.supports == ">=1.26,<3"
 
-    assert set(Urllib3Instrumentation.settings) == {"leaf", "propagate", "redact"}
-    assert Urllib3Instrumentation.settings["leaf"].default is True
-    assert Urllib3Instrumentation.settings["propagate"].default is True
-    assert Urllib3Instrumentation.settings["redact"].default == []
+    settings = Urllib3Instrumentation.settings
+    assert list(settings) == ["requests"]
+
+    requests = settings["requests"]
+    assert isinstance(requests, Aspect)
+    assert requests.primary is True
+    assert requests.defaults == {"leaf": True}
+    assert set(requests.settings) == {"propagate"}
+    assert requests.settings["propagate"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -38,14 +43,27 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = Urllib3Instrumentation()
 
-    assert instance.settings == {"leaf": True, "propagate": True, "redact": []}
+    requests = instance.settings["requests"]
+    assert requests.enabled is True
+    assert requests.options == {"leaf": True}
+    assert requests.settings == {"propagate": True}
     assert instance.applied == ()
     assert instance.pending == ("urllib3.poolmanager", "urllib3.connectionpool")
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="join"):
-        Urllib3Instrumentation(join=True)
+    with pytest.raises(ConfigError, match="verbosity"):
+        Urllib3Instrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        Urllib3Instrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        Urllib3Instrumentation(requests={"verbosity": 2})
 
 
 def test_the_installed_urllib3_is_within_supports() -> None:

@@ -39,10 +39,11 @@ filtered tree keeps the streamed body silenced too.
 The request boundary is where distributed trace identity arrives: a
 request carrying a `traceparent` header joins the caller's trace,
 and the query string is recorded with the built-in sensitive names
-masked, plus any the `redact` setting adds. `ignore_paths` becomes a
-filter_requests() filter on the middleware's when=, with tree=True,
-so an ignored request records nothing at all, its view, queries and
-template renders included.
+masked, plus any the `redact` key of the `requests` aspect adds; the
+aspect's other recording keys reach the middleware as they are.
+`ignore_paths` becomes a filter_requests() filter on the middleware's
+when=, with tree=True, so an ignored request records nothing at all,
+its view, queries and template renders included.
 """
 
 from __future__ import annotations
@@ -64,7 +65,7 @@ def instrument_wsgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
     """Bind WSGIHandler.__call__ to delegate through the recording
     middleware; register its removal as this trigger's cleanup."""
 
-    request_filter, policy = request_options(instrumentation)
+    request_filter, options = request_options(instrumentation)
 
     def boundary(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -80,7 +81,7 @@ def instrument_wsgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
                 wrapped,
                 when=request_filter,
                 tree=request_filter is not None,
-                capture_args=policy,
+                **options,
             )
 
             if instance is not None:
@@ -101,7 +102,7 @@ def instrument_asgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
     """Bind ASGIHandler.__call__ to delegate through the recording
     middleware; register its removal as this trigger's cleanup."""
 
-    request_filter, policy = request_options(instrumentation)
+    request_filter, options = request_options(instrumentation)
 
     async def boundary(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -113,7 +114,7 @@ def instrument_asgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
                 wrapped,
                 when=request_filter,
                 tree=request_filter is not None,
-                capture_args=policy,
+                **options,
             )
 
             if instance is not None:

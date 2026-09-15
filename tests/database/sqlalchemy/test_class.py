@@ -14,7 +14,7 @@ import pytest
 # where sqlalchemy cannot install (the free threaded 3.13 build).
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.database.sqlalchemy import SQLAlchemyInstrumentation
 
@@ -32,9 +32,21 @@ def test_class_data() -> None:
     assert SQLAlchemyInstrumentation.requires == ()
     assert SQLAlchemyInstrumentation.supports == ">=1.4,<3"
 
-    assert set(SQLAlchemyInstrumentation.settings) == {"leaf", "statement"}
-    assert SQLAlchemyInstrumentation.settings["leaf"].default is True
-    assert SQLAlchemyInstrumentation.settings["statement"].default is False
+    settings = SQLAlchemyInstrumentation.settings
+    assert list(settings) == ["statements", "connections"]
+
+    statements = settings["statements"]
+    assert isinstance(statements, Aspect)
+    assert statements.primary is True
+    assert statements.defaults == {"leaf": True}
+    assert set(statements.settings) == {"statement"}
+    assert statements.settings["statement"].default is False
+
+    connections = settings["connections"]
+    assert isinstance(connections, Aspect)
+    assert connections.primary is False
+    assert connections.defaults == {"leaf": True}
+    assert set(connections.settings) == set()
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -46,7 +58,15 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = SQLAlchemyInstrumentation()
 
-    assert instance.settings == {"leaf": True, "statement": False}
+    statements = instance.settings["statements"]
+    assert statements.enabled is True
+    assert statements.options == {"leaf": True}
+    assert statements.settings == {"statement": False}
+
+    connections = instance.settings["connections"]
+    assert connections.enabled is True
+    assert connections.options == {"leaf": True}
+    assert connections.settings == {}
     assert instance.applied == ()
     assert instance.pending == (
         "sqlalchemy.engine.default",
@@ -56,8 +76,18 @@ def test_constructing_without_settings_works() -> None:
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="propagate"):
-        SQLAlchemyInstrumentation(propagate=True)
+    with pytest.raises(ConfigError, match="verbosity"):
+        SQLAlchemyInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'statements': capture_result"):
+        SQLAlchemyInstrumentation(statements={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'statements': unknown keys"):
+        SQLAlchemyInstrumentation(statements={"verbosity": 2})
 
 
 def test_the_installed_sqlalchemy_is_within_supports() -> None:

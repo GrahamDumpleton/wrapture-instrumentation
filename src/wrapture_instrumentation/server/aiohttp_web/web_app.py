@@ -13,8 +13,8 @@ around the handling, the same boundary the xmlrpc.server target
 opens at its door. The block is labelled `aiohttp.web` and
 categorised `server`, seeded with the request method, path, scheme,
 peer and query (recorded through `wrapture.capture_query()`, the
-built-in sensitive names masked and the `redact` setting's names on
-top), and handed the request's headers as `joins=` so a request
+built-in sensitive names masked and the `requests` aspect's `redact`
+names on top), and handed the request's headers as `joins=` so a request
 carrying a `traceparent` makes the handling part of the caller's
 distributed trace, exactly as the WSGI and ASGI middlewares join at
 their boundary. The `join` setting off never parses the headers at
@@ -59,26 +59,33 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the application's request handling as the request
     boundary; register its removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
     # The aiohttp modules are already imported once this hook fires;
     # HTTPException is the class the status-not-failure rule keys on.
 
     from aiohttp.web_exceptions import HTTPException
 
-    # The query policy: redact() with the setting's names, or the
-    # reference level, either way on top of the built-in sensitive set.
+    # The query policy is the requests aspect's capture_args (a redact
+    # list already composed into it) or the reference level, either
+    # way on top of the built-in sensitive set; the aspect's leaf and
+    # stack keys go to the block.
 
-    names = tuple(settings["redact"])
-    policy: Any = wrapture.redact(*names) if names else "reference"
+    policy: Any = requests.options.get("capture_args", "reference")
+    block_options = {
+        key: value
+        for key, value in requests.options.items()
+        if key in ("leaf", "stack")
+    }
 
     # The ignored paths become a filter over the boundary's own
     # recorded fields, evaluated by hand per request since the
     # boundary is a block rather than a request middleware.
 
+    ignore_paths = requests["ignore_paths"]
     recording = (
-        wrapture.filter_requests(ignore={"path": list(settings["ignore_paths"])})
-        if settings["ignore_paths"]
+        wrapture.filter_requests(ignore={"path": list(ignore_paths)})
+        if ignore_paths
         else None
     )
 
@@ -123,7 +130,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         # the join parse; none of them are recorded.
 
         joins = None
-        if settings["join"]:
+        if requests["join"]:
             joins = {str(name): str(value) for name, value in request.headers.items()}
 
         data: dict[str, Any] = {
@@ -161,6 +168,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             joins=joins,
             when=wanted,
             tree=recording is not None,
+            **block_options,
         ):
             try:
                 response = await wrapped(*args, **kwargs)

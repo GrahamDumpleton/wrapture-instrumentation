@@ -62,9 +62,9 @@ def test_the_listing_tool_describes_the_entry() -> None:
     )
     assert "  modules: urllib3.poolmanager, urllib3.connectionpool" in output
 
-    assert "    leaf = true " in output
-    assert "    propagate = true " in output
-    assert "    redact = []" in output
+    assert "      leaf = true" in output
+    assert "      propagate = true" in output
+    assert "    requests (primary):" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:
@@ -73,4 +73,4 @@ def test_the_toml_template_carries_the_settings() -> None:
     assert '[[instrument]]\nname = "urllib3"\nenabled = false' in output
     assert "# leaf = true" in output
     assert "# propagate = true" in output
-    assert "# redact = []" in output
+    assert "# [instrument.requests]" in output

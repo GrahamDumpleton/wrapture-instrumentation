@@ -18,8 +18,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import web_app, web_urldispatcher
 
 
@@ -36,22 +37,34 @@ class AiohttpWebInstrumentation(wrapture.Instrumentation):
     removable = True
 
     settings = {
-        "ignore_paths": Setting(
-            [],
-            "request paths not to record, as path globs ('/health', '/static/*')",
+        "requests": Aspect(
+            "the request boundary: the application's request handling, one"
+            " event per request",
+            primary=True,
+            ignore_paths=Setting(
+                [],
+                "request paths not to record, as path globs ('/health', '/static/*')",
+            ),
+            join=Setting(
+                True,
+                "join the distributed trace an arriving request's"
+                " traceparent header carries, rather than minting a fresh"
+                " identity per request",
+            ),
         ),
-        "join": Setting(
-            True,
-            "join the distributed trace an arriving request's"
-            " traceparent header carries, rather than minting a fresh"
-            " identity per request",
-        ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "handlers": Aspect(
+            "request handlers, observed as their routes register",
+            capture_args="types",
+            capture_result="shape",
         ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the boundary block cannot honour:
+        it records the query through capture_args and takes a stack,
+        but captures no result."""
+
+        aspects.honours(self, "requests", "capture_args", "stack", "leaf")
 
     @wrapture.instrumentation_hook("aiohttp.web")
     def aiohttp_web(self, name: str, module: Any) -> None:

@@ -30,7 +30,7 @@ def test_a_request_records_one_tree_with_the_view_beneath_it(tape: Tape) -> None
     assert response.status == "200 OK"
     assert tape.tree() == (
         "GET /quote/widget (shop.wsgi_app)  -> '200 OK'\n"
-        "  quoted(item='widget')  -> <Response 29 bytes [200 OK]>"
+        "  quoted(item='widget')  -> '<Response 29 bytes [200 OK]>'"
     )
 
     # The request event carries the HTTP details plus the matched

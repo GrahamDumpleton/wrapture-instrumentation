@@ -68,7 +68,7 @@ def test_arguments_and_results_stay_out_of_capture(
     assert dispatch.arguments is not None
     assert dispatch.arguments["method"] == "echo"
     assert dispatch.arguments["params"] == "<1 values>"
-    assert dispatch.result == "<str>"
+    assert dispatch.result == "<str 14 chars>"
     assert "a-secret-value" not in repr(dispatch.arguments)
     assert "a-secret-value" not in repr(dispatch.result)
 

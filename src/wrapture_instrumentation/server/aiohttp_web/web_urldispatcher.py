@@ -11,7 +11,11 @@ two, with the same handler). The binding is behaviour only
 `wrapture.observed()` around the handler, labelled by the route's
 name when one was given, so each dispatched request records the
 handler's call beneath the request boundary, named by the function's
-own module and qualname.
+own module and qualname. The `handlers` aspect switches the binding and
+supplies its recording options: by default the handler's request
+argument records as its type (its repr would carry the raw query
+string) and its result as its shape, and a `[instrument.handlers]`
+table changes either.
 
 Only plain functions and methods are wrapped. A class-based
 `web.View` arrives here as the class itself and is left alone, as is
@@ -37,7 +41,16 @@ import wrapture
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind route construction to observe the handlers being
-    registered; register its removal as this trigger's cleanup."""
+    registered; register its removal as this trigger's cleanup. The
+    handlers aspect gates the whole trigger, with it off nothing binds
+    and there is nothing to clean up, and supplies the recording
+    options of every observation."""
+
+    handlers = instrumentation.settings["handlers"]
+    if not handlers.enabled:
+        return
+
+    options = handlers.options
 
     def observing(
         args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -59,9 +72,9 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         name = getattr(resource, "name", None)
 
         observed = (
-            wrapture.observed(handler, label=str(name))
+            wrapture.observed(handler, label=str(name), **options)
             if name
-            else wrapture.observed(handler)
+            else wrapture.observed(handler, **options)
         )
 
         if "handler" in kwargs:

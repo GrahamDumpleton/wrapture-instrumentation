@@ -112,7 +112,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     setting), the transport as a plain event, and the header hook for
     propagation; register their removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -175,13 +175,17 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return (args[0], headers + added, *args[2:]), kwargs
 
+    # The requests aspect's recording options splat over the package's
+    # own, so an explicit capture key under the aspect replaces the
+    # masking policy and the declared leaf default holds.
+
     call = wrapture.binding(
         module.ServerProxy,
         "_ServerProxy__request",
-        leaf=settings["leaf"],
         category="external",
         capture_args=captured,
         capture_result=captured,
+        **requests.options,
     )
     call.on_call.decorates(record)
 
@@ -194,7 +198,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     named: dict[str, wrapture.Binding] = {"call": call, "transport": transport}
 
-    if settings["propagate"]:
+    if requests["propagate"]:
         headers = wrapture.binding(module.Transport, "send_headers", when=False)
         headers.on_call.transforms_args(inject)
         named["headers"] = headers

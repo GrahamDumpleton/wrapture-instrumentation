@@ -66,13 +66,9 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    leaf = true " in output
-    assert (
-        "record each remote call as a terminal node, so the transport work"
-        " beneath it (including its silent reconnect retry) stays out of"
-        " the tree" in output
-    )
-    assert "    propagate = true " in output
+    assert "      leaf = true" in output
+    assert "the request boundary: every remote call through a server proxy" in output
+    assert "      propagate = true" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:

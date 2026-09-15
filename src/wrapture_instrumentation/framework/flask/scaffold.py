@@ -17,7 +17,10 @@ Each binding is behaviour-only (when=False) and substitutes
 wrapture.observed() around the callable being registered, so the
 callback records as a call event beneath its request whenever Flask
 later runs it, while the registering code gets its own function back
-from the decorator form.
+from the decorator form. The lifecycle aspect covers the callback
+registrations and the handlers aspect the error handler registration;
+an error handler returns a response body, so the handlers aspect
+records its result as its shape by default.
 """
 
 from __future__ import annotations
@@ -34,27 +37,37 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     group, and register the group's removal as this trigger's
     cleanup.
 
-    The lifecycle setting gates the callback registrations; error
-    handler observation is core and always binds.
+    The lifecycle aspect gates the callback registrations and the
+    handlers aspect the error handler registration, each supplying the
+    recording options of the observations it makes; with both off,
+    nothing binds and there is nothing to clean up.
     """
 
     named: dict[str, wrapture.Binding] = {}
 
-    if instrumentation.settings["lifecycle"]:
+    lifecycle = instrumentation.settings["lifecycle"]
+    if lifecycle.enabled:
+        observing = observing_registration(0, "f", lifecycle.options)
+
         before = wrapture.binding(module.Scaffold, "before_request", when=False)
-        before.on_call.decorates(observing_registration(0, "f"))
+        before.on_call.decorates(observing)
 
         after = wrapture.binding(module.Scaffold, "after_request", when=False)
-        after.on_call.decorates(observing_registration(0, "f"))
+        after.on_call.decorates(observing)
 
         teardown = wrapture.binding(module.Scaffold, "teardown_request", when=False)
-        teardown.on_call.decorates(observing_registration(0, "f"))
+        teardown.on_call.decorates(observing)
 
         named.update(before=before, after=after, teardown=teardown)
 
-    errors = wrapture.binding(module.Scaffold, "register_error_handler", when=False)
-    errors.on_call.decorates(observing_registration(1, "f"))
-    named["errors"] = errors
+    handlers = instrumentation.settings["handlers"]
+    if handlers.enabled:
+        errors = wrapture.binding(module.Scaffold, "register_error_handler", when=False)
+        errors.on_call.decorates(observing_registration(1, "f", handlers.options))
+        named["errors"] = errors
+
+    if not named:
+        return
 
     group = wrapture.bindings(**named)
     group.apply()

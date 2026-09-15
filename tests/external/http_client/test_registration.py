@@ -76,15 +76,12 @@ def test_the_listing_tool_describes_the_entry() -> None:
         f" python {platform.python_version()}), supported (>=3.12)" in output
     )
     assert "  modules: http.client" in output
-    assert "    redact = []" in output
-    assert (
-        "query string parameters to mask by name, on top of the"
-        " built-in sensitive set" in output
-    )
+    assert "    requests (primary):" in output
+    assert "the phases of each exchange on a connection" in output
 
 
 def test_the_toml_template_carries_the_setting() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "http.client"\nenabled = false' in output
-    assert "# redact = []" in output
+    assert "# [instrument.requests]" in output

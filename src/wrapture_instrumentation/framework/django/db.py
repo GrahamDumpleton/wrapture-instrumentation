@@ -15,15 +15,17 @@ Every event carries `system` (the connection's vendor: `sqlite`,
 COMMIT/ROLLBACK), the database category's contract keys, plus the
 `database` and, for a server database, `host` and `port` from the
 connection's settings. The SQL text itself is recorded only when the
-`statement` setting is on, and then as an annotation, never with its
-bound parameters, which no setting captures; with the setting off
-the text reduces to its length in the captured arguments.
+queries aspect's `statement` setting is on, and then as an annotation,
+never with its bound parameters, which no setting captures; with the
+setting off the text reduces to its length in the captured
+arguments, the aspect's default capture policy, which an explicit
+capture key under the aspect replaces.
 
-With `leaf` on (the default) each event is a terminal node, so an
-instrumented driver beneath it (the sqlite3 target, a future
+With the aspect's `leaf` on (the default) each event is a terminal
+node, so an instrumented driver beneath it (the sqlite3 target, a
 per-backend package) is folded in and the query records once; with
-it off the driver's own events nest beneath. The `queries` setting
-gates the whole file: with it off, neither hook binds anything.
+it off the driver's own events nest beneath. The aspect's switch gates
+the whole file: with it off, neither hook binds anything.
 """
 
 from __future__ import annotations
@@ -67,8 +69,8 @@ def statement_binding(
     """A ready binding on execute or executemany, annotating each
     call with the database contract keys."""
 
-    settings = instrumentation.settings
-    record_statement = bool(settings["statement"])
+    queries = instrumentation.settings["queries"]
+    record_statement = bool(queries["statement"])
 
     def executes(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -88,26 +90,33 @@ def statement_binding(
 
         return wrapped(*args, **kwargs)
 
-    binding = wrapture.binding(
-        owner,
-        name,
-        category="database",
-        leaf=bool(settings["leaf"]),
-        capture_args=captured,
-        capture_result=captured,
-    )
+    binding = wrapture.binding(owner, name, **query_options(instrumentation))
     binding.on_call.decorates(executes)
 
     return binding
 
 
+def query_options(instrumentation: wrapture.Instrumentation) -> dict[str, Any]:
+    """The binding options every database event shares: the category
+    and the masking policy, with the queries aspect's recording options
+    splatted over them so an explicit capture key under the aspect
+    replaces the package's own and the declared leaf default holds."""
+
+    return {
+        "category": "database",
+        "capture_args": captured,
+        "capture_result": captured,
+        **instrumentation.settings["queries"].options,
+    }
+
+
 def instrument_cursors(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the statement seam on CursorWrapper; register its removal
-    as this trigger's cleanup. The queries setting gates the whole
+    as this trigger's cleanup. The queries aspect gates the whole
     trigger: with it off, nothing binds and there is nothing to clean
     up."""
 
-    if not instrumentation.settings["queries"]:
+    if not instrumentation.settings["queries"].enabled:
         return
 
     group = wrapture.bindings(
@@ -126,12 +135,12 @@ def instrument_transactions(
 ) -> None:
     """Bind the transaction ends on BaseDatabaseWrapper; register
     their removal as this trigger's cleanup. Gated by the queries
-    setting exactly as the cursor seam is."""
+    aspect exactly as the cursor seam is."""
 
-    settings = instrumentation.settings
-
-    if not settings["queries"]:
+    if not instrumentation.settings["queries"].enabled:
         return
+
+    options = query_options(instrumentation)
 
     def performs(operation: str) -> Any:
         def record(
@@ -150,14 +159,7 @@ def instrument_transactions(
         return record
 
     def boundary(name: str, operation: str) -> wrapture.Binding:
-        binding = wrapture.binding(
-            module.BaseDatabaseWrapper,
-            name,
-            category="database",
-            leaf=bool(settings["leaf"]),
-            capture_args=captured,
-            capture_result=captured,
-        )
+        binding = wrapture.binding(module.BaseDatabaseWrapper, name, **options)
         binding.on_call.decorates(performs(operation))
 
         return binding

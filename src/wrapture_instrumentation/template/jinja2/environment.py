@@ -21,7 +21,8 @@ trace):
   cache hit is just a fast load), and a cold load compiles inside
   it; a string template compiles without a load. The load event is
   annotated with the template name and, once loaded, the source
-  file's path. The loading setting gates both.
+  file's path. The loading aspect gates both, as the renders aspect gates
+  the renders, and each supplies its bindings' recording options.
 
 The capture policy is deliberate about sensitive data: the render
 context is masked wholesale (it is arbitrary application data), the
@@ -109,29 +110,39 @@ def stamp_load(
 
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
-    """Bind the renders on Template and, under the loading setting,
-    the loading pipeline on Environment; apply them as one group and
-    register the group's removal as this trigger's cleanup."""
+    """Bind the renders on Template under the renders aspect and the
+    loading pipeline on Environment under the loading aspect; apply them
+    as one group and register the group's removal as this trigger's
+    cleanup."""
 
     named: dict[str, wrapture.Binding] = {}
 
-    for name in RENDERS:
-        bound = wrapture.binding(
-            module.Template,
-            name,
-            category="template",
-            capture_args=masked,
-            capture_result=masked,
-        )
-        bound.on_call.decorates(stamp_template)
-        named[name] = bound
+    # Each aspect's recording options splat over the package's own
+    # policies, so an explicit capture key under the aspect replaces the
+    # masking; the aspect's switch gates its bindings.
 
-    if instrumentation.settings["loading"]:
+    renders = instrumentation.settings["renders"]
+    if renders.enabled:
+        for name in RENDERS:
+            bound = wrapture.binding(
+                module.Template,
+                name,
+                category="template",
+                capture_args=masked,
+                capture_result=masked,
+                **renders.options,
+            )
+            bound.on_call.decorates(stamp_template)
+            named[name] = bound
+
+    loading = instrumentation.settings["loading"]
+    if loading.enabled:
         load = wrapture.binding(
             module.Environment,
             "_load_template",
             capture_args=load_policy,
             capture_result=load_policy,
+            **loading.options,
         )
         load.on_call.decorates(stamp_load)
         named["load"] = load
@@ -141,8 +152,12 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             "compile",
             capture_args=compile_policy,
             capture_result=compile_policy,
+            **loading.options,
         )
         named["compile"] = compiled
+
+    if not named:
+        return
 
     group = wrapture.bindings(**named)
     group.apply()

@@ -64,18 +64,38 @@ event pins the exact method it came from.
   compile's template source is truncated. Template names and paths
   pass; they name code, not data.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `renders` (primary) | `Template.render`, `generate` and their async forms, as template events | the context masked and the output as its size, an explicit capture key under the aspect replacing that |
+| `loading` | `Environment._load_template` and `Environment.compile`. Loads fire on every `get_template`, cache hit or not, so this is the aspect to switch off when render events alone tell the story | names and paths as they are, the source truncated, the globals masked |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.loading]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `loading = false` on the entry means the same. The primary aspect's
+keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `loading` | `true` | Observing the loading pipeline, the `Environment._load_template` and `Environment.compile` events. Loads fire on every `get_template`, cache hit or not, so this is the layer to switch off when render events alone tell the story. The renders have no switch; they are the point. |
+No settings of its own: the recording keys under the aspect are the
+whole of what the entry takes.
 
 ```toml
 [[instrument]]
 name = "jinja2"
 loading = false
 ```
-
 ## With framework_flask
 
 Nothing to configure: with both applied, `flask:render_template`

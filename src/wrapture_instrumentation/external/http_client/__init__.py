@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect
 
 from . import client
 
@@ -37,11 +37,14 @@ class HTTPClientInstrumentation(wrapture.Instrumentation):
     supports = ">=3.12"
     removable = True
 
+    # One aspect, the request phases on a connection, so its keys may be
+    # written flat on the entry.
+
     settings = {
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "requests": Aspect(
+            "the phases of each exchange on a connection: connect, request"
+            " line, headers and body out, response in",
+            primary=True,
         ),
     }
 

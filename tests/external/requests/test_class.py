@@ -12,7 +12,7 @@ import pytest
 # import, so the applying test below works with this file run on its
 # own.
 import requests  # noqa: F401
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.external.requests import RequestsInstrumentation
 
@@ -23,10 +23,15 @@ def test_class_data() -> None:
     assert RequestsInstrumentation.requires == ()
     assert RequestsInstrumentation.supports == ">=2.31,<3"
 
-    assert set(RequestsInstrumentation.settings) == {"leaf", "propagate", "redact"}
-    assert RequestsInstrumentation.settings["leaf"].default is True
-    assert RequestsInstrumentation.settings["propagate"].default is True
-    assert RequestsInstrumentation.settings["redact"].default == []
+    settings = RequestsInstrumentation.settings
+    assert list(settings) == ["requests"]
+
+    aspect = settings["requests"]
+    assert isinstance(aspect, Aspect)
+    assert aspect.primary is True
+    assert aspect.defaults == {"leaf": True}
+    assert set(aspect.settings) == {"propagate"}
+    assert aspect.settings["propagate"].default is True
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -38,14 +43,27 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = RequestsInstrumentation()
 
-    assert instance.settings == {"leaf": True, "propagate": True, "redact": []}
+    aspect = instance.settings["requests"]
+    assert aspect.enabled is True
+    assert aspect.options == {"leaf": True}
+    assert aspect.settings == {"propagate": True}
     assert instance.applied == ()
     assert instance.pending == ("requests.sessions",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="ignore_hosts"):
-        RequestsInstrumentation(ignore_hosts=["localhost"])
+    with pytest.raises(ConfigError, match="verbosity"):
+        RequestsInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        RequestsInstrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        RequestsInstrumentation(requests={"verbosity": 2})
 
 
 def test_a_setting_of_the_wrong_type_is_refused() -> None:

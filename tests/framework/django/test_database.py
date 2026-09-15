@@ -56,7 +56,7 @@ def test_the_statement_setting_records_the_sql_without_parameters(
     database: None,
 ) -> None:
     with (
-        instrumentation(DjangoInstrumentation, statement=True),
+        instrumentation(DjangoInstrumentation, queries={"statement": True}),
         timeline() as tape,
     ):
         response = request(make_wsgi_app(), "GET", "/restock/")
@@ -115,7 +115,7 @@ def _driven_composed(leaf: bool) -> Tape:
 
     try:
         with (
-            instrumentation(DjangoInstrumentation, leaf=leaf),
+            instrumentation(DjangoInstrumentation, queries={"leaf": leaf}),
             instrumentation(SQLite3Instrumentation),
             timeline() as tape,
         ):

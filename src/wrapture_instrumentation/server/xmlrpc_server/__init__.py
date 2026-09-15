@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import server
 
 
@@ -34,13 +35,28 @@ class XMLRPCServerInstrumentation(wrapture.Instrumentation):
     removable = True
 
     settings = {
-        "join": Setting(
-            True,
-            "join the distributed trace an arriving request's"
-            " traceparent header carries, rather than minting a fresh"
-            " identity per request",
+        "requests": Aspect(
+            "the request boundary: the POST handler, one event per request",
+            primary=True,
+            join=Setting(
+                True,
+                "join the distributed trace an arriving request's"
+                " traceparent header carries, rather than minting a fresh"
+                " identity per request",
+            ),
+        ),
+        "methods": Aspect(
+            "each dispatched procedure, beneath its request",
+            capture_args=server.captured,
+            capture_result="shape",
         ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the boundary block cannot honour:
+        it records no values, so only a stack and leaf apply."""
+
+        aspects.honours(self, "requests", "stack", "leaf")
 
     @wrapture.instrumentation_hook("xmlrpc.server")
     def xmlrpc_server(self, name: str, module: Any) -> None:

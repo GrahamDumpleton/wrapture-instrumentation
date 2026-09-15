@@ -13,8 +13,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import app, blueprints, scaffold, templating
 
 
@@ -31,33 +32,46 @@ class FlaskInstrumentation(wrapture.Instrumentation):
     supports = ">=3.0,<4"
     removable = True
 
-    # The category switches: which layers of the instrumentation are
-    # in play. The request tree, route annotation, view observation
-    # and unhandled-exception noting are the point and have no switch.
+    # The aspects: the groups of call sites the instrumentation binds,
+    # each with its switch and its recording defaults. The request
+    # boundary is the primary aspect, so its keys may be written flat on
+    # the entry; the route annotation and unhandled-exception noting
+    # are the point and belong to no aspect.
 
     settings = {
-        "ignore_paths": Setting(
-            [],
-            "request paths not to record, as path globs ('/health', '/static/*')",
+        "requests": Aspect(
+            "the request boundary: the WSGI application, one event per request",
+            primary=True,
+            ignore_paths=Setting(
+                [],
+                "request paths not to record, as path globs ('/health', '/static/*')",
+            ),
         ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "views": Aspect(
+            "view functions, observed as their routes register",
+            capture_result="shape",
         ),
-        "lifecycle": Setting(
-            True,
-            "observe before/after/teardown callbacks as they register",
+        "lifecycle": Aspect(
+            "before, after and teardown callbacks, observed as they register",
+        ),
+        "handlers": Aspect(
+            "error handlers, observed as they register",
+            capture_result="shape",
+        ),
+        "templates": Aspect(
+            "template rendering through the render and stream functions",
         ),
         "handled_errors": Setting(
             True,
             "note an exception a registered handler absorbed against its request",
         ),
-        "templates": Setting(
-            True,
-            "observe template rendering beneath the view that asked for it",
-        ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the boundary middleware cannot
+        honour."""
+
+        aspects.honours(self, "requests", "capture_args", "capture_result", "leaf")
 
     @wrapture.instrumentation_hook("flask.app")
     def flask_app(self, name: str, module: Any) -> None:

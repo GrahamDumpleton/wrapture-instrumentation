@@ -60,7 +60,11 @@ def test_the_listing_tool_describes_the_entry() -> None:
     )
     assert "  modules: jinja2.environment" in output
     assert (
-        "    loading = true   observe template loading and compilation"
+        "    renders (primary):   template rendering: render, generate and"
+        " their async forms" in output
+    )
+    assert (
+        "    loading:             template loading and compilation"
         " (Environment._load_template and Environment.compile)" in output
     )
 
@@ -69,4 +73,5 @@ def test_the_toml_template_carries_the_setting() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "jinja2"\nenabled = false' in output
-    assert "# loading = true" in output
+    assert "# [instrument.renders]" in output
+    assert "# [instrument.loading]" in output

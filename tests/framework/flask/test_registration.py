@@ -76,24 +76,21 @@ def test_the_listing_tool_describes_the_entry() -> None:
     assert "  removable: yes" in output
     assert "  settings:" in output
     assert (
-        "    ignore_paths = []       request paths not to record, as path"
+        "    requests (primary):          the request boundary: the WSGI"
+        " application, one event per request" in output
+    )
+    assert (
+        "      ignore_paths = []          request paths not to record, as path"
         " globs ('/health', '/static/*')" in output
     )
+    assert "    views:                       view functions, observed" in output
+    assert '      capture_result = "shape"' in output
+    assert "    lifecycle:                   before, after and teardown" in output
+    assert "    handlers:                    error handlers, observed" in output
+    assert "    templates:                   template rendering through" in output
     assert (
-        "    redact = []             query string parameters to mask by name,"
-        " on top of the built-in sensitive set" in output
-    )
-    assert (
-        "    lifecycle = true        observe before/after/teardown callbacks"
-        " as they register" in output
-    )
-    assert (
-        "    handled_errors = true   note an exception a registered handler"
+        "    handled_errors = true        note an exception a registered handler"
         " absorbed against its request" in output
-    )
-    assert (
-        "    templates = true        observe template rendering beneath the"
-        " view that asked for it" in output
     )
     assert "  would register: flask.app\n" in output
     assert "  would register: flask.sansio.scaffold\n" in output
@@ -105,8 +102,11 @@ def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "flask"\nenabled = false' in output
-    assert "# ignore_paths = []" in output
-    assert "# redact = []" in output
-    assert "# lifecycle = true" in output
     assert "# handled_errors = true" in output
-    assert "# templates = true" in output
+    assert "# [instrument.requests]" in output
+    assert "# ignore_paths = []" in output
+    assert "# [instrument.views]" in output
+    assert '# capture_result = "shape"' in output
+    assert "# [instrument.lifecycle]" in output
+    assert "# [instrument.handlers]" in output
+    assert "# [instrument.templates]" in output

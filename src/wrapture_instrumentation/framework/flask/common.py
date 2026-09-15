@@ -5,6 +5,7 @@ This module imports only wrapture; nothing here touches Flask.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import wrapture
@@ -12,9 +13,12 @@ import wrapture
 RegistrationWrapper = Any
 
 
-def observing_registration(position: int, keyword: str) -> Any:
+def observing_registration(
+    position: int, keyword: str, options: Mapping[str, Any]
+) -> Any:
     """A decorates() wrapper that substitutes wrapture.observed() around
-    the callable a registration method receives.
+    the callable a registration method receives, recording with the
+    given aspect's options.
 
     The callable is found at `position` in the positional arguments or
     under `keyword`; a call without one passes through untouched. The
@@ -45,7 +49,7 @@ def observing_registration(position: int, keyword: str) -> Any:
         # the same function hands this wrapper the raw callable again,
         # so observations never stack.
 
-        proxy = wrapture.observed(target)
+        proxy = wrapture.observed(target, **options)
 
         if keyword in kwargs:
             kwargs = dict(kwargs, **{keyword: proxy})

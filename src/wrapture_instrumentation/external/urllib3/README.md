@@ -78,20 +78,38 @@ beneath the send, itself a leaf that then hides `http.client` below
 it, the same layering as urllib over http.client. A direct urllib3
 call beside requests records its own leaf either way.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | every `urlopen` through a `PoolManager` or an `HTTPConnectionPool`, as one external event | `leaf = true`; the recorded `query` through `capture_args` (a `redact` list composes into it), the call's own arguments and the response reduced by the package whatever the level: the URL without its query, a body as its size, a response as its type |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `leaf` | `true` | Record each request as a terminal node, so the nested calls behind a redirect, a retry or the manager's delegation to a pool, and anything recorded beneath it, stay out of the tree. Off exposes that machinery. |
-| `propagate` | `true` | Add the current trace identity to each request's headers so the service called can join the trace. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the server; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `propagate` | `requests` | `true` | Add the current trace identity to each request's headers so the service called can join the trace. |
 
 ```toml
 [[instrument]]
 name = "urllib3"
 redact = ["voucher"]
 ```
-
 ## How it patches
 
 For the implementation detail see the module docstring of

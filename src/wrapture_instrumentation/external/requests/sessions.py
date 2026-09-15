@@ -22,8 +22,8 @@ exchange really failed (a refused connection, a name that does not
 resolve, too many redirects), in which case there is no status. The
 query is recorded as wrapture.capture_query() gives it, the same
 form the request middlewares record inbound: the built-in sensitive
-names masked whatever else is said, and the redact setting's names
-masked on top. The captured request argument shows the URL without
+names masked whatever else is said, and the requests aspect's redact
+names masked on top. The captured request argument shows the URL without
 its query, so the query appears in one place, protected; the request
 body is never recorded, and the response reduces to its type.
 
@@ -52,6 +52,8 @@ from contextvars import ContextVar
 from typing import Any
 
 import wrapture
+
+from ... import aspects
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -155,13 +157,20 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     setting, propagating the trace by the propagate setting; register
     its removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
-    # The query policy: redact() with the setting's names, or the
-    # reference level, either way on top of the built-in sensitive set.
+    # The query policy is the requests aspect's capture_args (a redact
+    # list already composed into it) or the reference level, either
+    # way on top of the built-in sensitive set; the aspect's other keys
+    # splat over the binding's own options.
 
-    names = tuple(settings["redact"])
-    policy: Any = wrapture.redact(*names) if names else "reference"
+    policy, options = aspects.boundary_options(
+        requests,
+        category="external",
+        capture_args=captured_argument,
+        capture_result=captured_argument,
+    )
+    leaf = bool(options.get("leaf", False))
 
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -182,14 +191,14 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         owned = bool(wrapture.current_event(binding=send))
 
-        if owned and settings["propagate"]:
+        if owned and requests["propagate"]:
             propagate_into(request)
 
         # A nested send beneath this target's own leaf has no event
         # of its own to annotate, and must not overwrite the leaf's.
 
         nested = _depth.get() > 0
-        recording = owned and not (nested and settings["leaf"])
+        recording = owned and not (nested and leaf)
 
         if recording:
             wrapture.annotate(**describe(request, policy))
@@ -211,14 +220,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return response
 
-    send = wrapture.binding(
-        module.Session,
-        "send",
-        leaf=settings["leaf"],
-        category="external",
-        capture_args=captured_argument,
-        capture_result=captured_argument,
-    )
+    send = wrapture.binding(module.Session, "send", **options)
     send.on_call.decorates(record)
     send.apply()
 

@@ -39,7 +39,7 @@ aiohttp.client:ClientSession._request(method='GET', str_or_url='http://api/quote
   beneath it records. The event carries the external category's
   contract keys: method, URL (the query string and any userinfo
   stripped), host, port, path, query (recorded with the built-in
-  sensitive names masked, plus any the `redact` setting adds) and
+  sensitive names masked, plus any the `redact` key adds) and
   the status.
 
 - aiohttp answers a 4xx or 5xx with a response rather than an
@@ -52,7 +52,7 @@ aiohttp.client:ClientSession._request(method='GET', str_or_url='http://api/quote
 - A followed redirect is one event, not a nested request: aiohttp
   resolves the hops in a loop inside the one `_request` call, named
   by the URL asked for and carrying the status of where it ended up,
-  whatever the `leaf` setting says.
+  whatever the `leaf` key says.
 
 - The coroutine returns once the response headers are in, the body
   read afterwards, so the event covers the exchange to the
@@ -76,13 +76,32 @@ the `traceparent` header, and the server's request boundary joins
 it, one trace id across the two sides carried by nothing but the
 header.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | every request a `ClientSession` makes, on `_request`, as one external event | `leaf = true`; the recorded `query` through `capture_args` (a `redact` list composes into it), the call's own arguments and the response reduced by the package whatever the level: the URL without its query, a body as its size, a response as its type |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `leaf` | `true` | Record each request as a terminal node, so anything recorded beneath it stays out of the tree. Off exposes what the client does internally, though a redirect stays one event either way. |
-| `propagate` | `true` | Add the current trace identity to each request's headers so the service called can join the trace. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the server; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `propagate` | `requests` | `true` | Add the current trace identity to each request's headers so the service called can join the trace. |
 
 ```toml
 [[instrument]]
@@ -90,7 +109,6 @@ name = "aiohttp.client"
 propagate = false
 redact = ["voucher"]
 ```
-
 ## How it patches
 
 For the implementation detail see the module docstring of

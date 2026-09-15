@@ -48,7 +48,11 @@ objects, which then pass everything through untouched.
 
 The request and response payloads are never captured, on either
 side, and metadata values are never recorded; the method path, the
-code and the addresses are the whole of what an event carries.
+code and the addresses are the whole of what an event carries. The
+`client` aspect's recording keys splat over the door bindings' own
+options, so an explicit capture key under it is a deliberate choice
+to record payloads; the `server` aspect's boundary is a block, which
+takes a stack and leaf and captures nothing.
 
 grpc.aio is not yet covered: its factories and interceptor
 interfaces are a separate async surface, left to a follow-up.
@@ -118,7 +122,16 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     build the interceptor classes against the grpc module handed in;
     register removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    client = instrumentation.settings["client"]
+    server = instrumentation.settings["server"]
+
+    # The server block takes the aspect's leaf and stack keys; the
+    # client aspect's recording options splat over the door bindings'
+    # own below.
+
+    block_options = {
+        key: value for key, value in server.options.items() if key in ("leaf", "stack")
+    }
 
     # Removal restores the factories but cannot reach interceptors
     # already riding on live channels and servers; this flag is how
@@ -187,7 +200,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
             recorded = any(wrapture.current_event(binding=door) for door in doors)
 
-            if active[0] and settings["propagate"] and recorded:
+            if active[0] and client["propagate"] and recorded:
                 details = with_trace_metadata(details)
 
             return continuation(details, argument)
@@ -258,6 +271,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             leaf=True,
             capture_args="none",
             capture_result="types",
+            **client.options,
         )
         binding.on_call.decorates(calls_for(binding))
         doors.append(binding)
@@ -275,7 +289,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
                 return handler
 
             joins = None
-            if settings["join"]:
+            if server["join"]:
                 joins = {
                     str(key): value
                     for key, value in details.invocation_metadata
@@ -315,7 +329,11 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
                 aborted = None
                 with wrapture.block(
-                    "grpc", category="server", data=described(context), joins=joins
+                    "grpc",
+                    category="server",
+                    data=described(context),
+                    joins=joins,
+                    **block_options,
                 ):
                     try:
                         yield from inner(argument, context)
@@ -342,7 +360,11 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
             aborted = None
             with wrapture.block(
-                "grpc", category="server", data=described(context), joins=joins
+                "grpc",
+                category="server",
+                data=described(context),
+                joins=joins,
+                **block_options,
             ):
                 try:
                     response = inner(argument, context)
@@ -415,7 +437,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     named: dict[str, wrapture.Binding] = {}
 
-    if settings["client"]:
+    if client.enabled:
         for name in ("insecure_channel", "secure_channel"):
             factory = wrapture.binding(module, name, when=False)
             factory.on_call.decorates(opens_channel)
@@ -424,7 +446,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         for door in ("unary_unary", "unary_stream", "stream_unary", "stream_stream"):
             named[door] = call_binding(door)
 
-    if settings["server"]:
+    if server.enabled:
         factory = wrapture.binding(module, "server", when=False)
         factory.on_call.decorates(builds_server)
         named["server"] = factory

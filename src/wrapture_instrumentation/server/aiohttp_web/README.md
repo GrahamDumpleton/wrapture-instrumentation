@@ -68,21 +68,44 @@ block: aiohttp.web  [148us, self 129us]
   a request carrying a `traceparent` header joins the caller's
   trace.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the application's request handling, one `server` boundary per request | the query string through `capture_args` (a `redact` list composes into it) on top of the built-in sensitive names; the boundary is a `block()` event, which captures no result, so the aspect takes `stack` and `leaf` beside that and refuses `capture_result` |
+| `handlers` | handler functions, observed as their routes register | the request argument as its type (`capture_args = "types"`, its repr would carry the raw query string) and the result as its shape (`capture_result = "shape"`) |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.handlers]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `handlers = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its handler included. |
-| `join` | `true` | Joining the distributed trace an arriving request's `traceparent` header carries. Off, every request's tree mints its own identity. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `ignore_paths` | `requests` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its handler included. |
+| `join` | `requests` | `true` | Joining the distributed trace an arriving request's `traceparent` header carries. Off, every request's tree mints its own identity. |
 
 ```toml
 [[instrument]]
 name = "aiohttp.web"
 ignore_paths = ["/health"]
 redact = ["voucher"]
-```
 
+[instrument.handlers]
+capture_result = "types"
+```
 ## How it patches
 
 For the implementation detail see the module docstrings of

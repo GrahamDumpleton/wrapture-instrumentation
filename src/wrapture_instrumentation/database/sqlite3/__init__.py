@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
 from . import dbapi2
 
@@ -38,13 +38,25 @@ class SQLite3Instrumentation(wrapture.Instrumentation):
     supports = ">=3.12"
     removable = True
 
+    # The aspects, each a terminal node by default. Statements is
+    # primary, so its keys may be written flat.
+
     settings = {
-        "statement": Setting(
-            False,
-            "record the SQL text as written on each query event; off"
-            " by default because sqlite3 code commonly interpolates"
-            " literals into its SQL, and the text is only safe to"
-            " record when queries are parameterized",
+        "statements": Aspect(
+            "the execute family on cursors and connections, as database events",
+            primary=True,
+            leaf=True,
+            statement=Setting(
+                False,
+                "record the SQL text as written on each query event; off"
+                " by default because sqlite3 code commonly interpolates"
+                " literals into its SQL, and the text is only safe to"
+                " record when queries are parameterized",
+            ),
+        ),
+        "connections": Aspect(
+            "connections opened and transactions ended, as database events",
+            leaf=True,
         ),
     }
 

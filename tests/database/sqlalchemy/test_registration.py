@@ -78,12 +78,11 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    leaf = true " in output
-    assert (
-        "record each statement as a terminal node, so anything recorded"
-        " beneath it" in output
-    )
-    assert "    statement = false " in output
+    assert "      leaf = true" in output
+    assert "    statements (primary):" in output
+    assert "every statement the dialect executes, as database events" in output
+    assert "    connections:" in output
+    assert "      statement = false" in output
     assert "record the SQL text as compiled on each statement event" in output
 
 

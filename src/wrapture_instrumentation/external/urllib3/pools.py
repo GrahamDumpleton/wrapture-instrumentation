@@ -28,7 +28,8 @@ the event carries an exception only when the exchange really failed
 (a refused connection, a name that did not resolve, retries
 exhausted), in which case there is no status. The query is recorded
 through wrapture.capture_query(), the built-in sensitive names
-masked whatever else is said and the redact setting's names on top.
+masked whatever else is said and the requests aspect's redact names on
+top.
 The call's arguments are not captured (the method and url are already
 the contract keys in the event data, and urlopen's wide signature
 would spell out every defaulted keyword as noise); the request body
@@ -41,6 +42,8 @@ from contextvars import ContextVar
 from typing import Any
 
 import wrapture
+
+from ... import aspects
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -132,10 +135,10 @@ def _recorder(instrumentation: wrapture.Instrumentation, binding: Any) -> Any:
     """Build the record function the two doors share, closed over the
     settings, the query policy and the door's own binding."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
-    names = tuple(settings["redact"])
-    policy: Any = wrapture.redact(*names) if names else "reference"
+    policy, options = aspects.boundary_options(requests)
+    leaf = bool(options.get("leaf", False))
 
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -158,10 +161,10 @@ def _recorder(instrumentation: wrapture.Instrumentation, binding: Any) -> Any:
         # event.
 
         owned = bool(wrapture.current_event(binding=binding))
-        recording = owned and not (_depth.get() > 0 and settings["leaf"])
+        recording = owned and not (_depth.get() > 0 and leaf)
 
         if recording:
-            if settings["propagate"]:
+            if requests["propagate"]:
                 headers_arg = args[3] if len(args) > 3 else kwargs.get("headers")
                 propagate_into(instance, kwargs, headers_arg)
 
@@ -187,16 +190,18 @@ def _bind(owner: Any, instrumentation: wrapture.Instrumentation) -> wrapture.Bin
     """Bind urlopen on one door as an external leaf with the shared
     recorder; register its removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    # The requests aspect's recording keys splat over the binding's own
+    # options; its capture_args is the query policy the recorder
+    # applies, never the binding's argument capture.
 
-    binding = wrapture.binding(
-        owner,
-        "urlopen",
-        leaf=settings["leaf"],
+    _, options = aspects.boundary_options(
+        instrumentation.settings["requests"],
         category="external",
         capture_args="none",
         capture_result="types",
     )
+
+    binding = wrapture.binding(owner, "urlopen", **options)
     binding.on_call.decorates(_recorder(instrumentation, binding))
     binding.apply()
 

@@ -22,9 +22,13 @@ Every event carries `system` (the dialect's name: `sqlite`,
 `CONNECT`), the database category's contract keys, plus the
 `database` and, for a server database, `host` and `port` from the
 engine's URL. The SQL text itself is recorded only when the
-`statement` setting is on, never with its bound parameters, which no
-setting captures; with the setting off the text reduces to its
-length in the captured arguments.
+statements aspect's `statement` setting is on, never with its bound
+parameters, which no setting captures; with the setting off the text
+reduces to its length in the captured arguments, the package's own
+capture policy, which an explicit capture key under the aspect
+replaces. The statement bindings take the `statements` aspect's
+recording options and the connect binding the `connections` aspect's;
+both aspects are leaves by default.
 
 A failing statement records the driver-level exception the seam
 sees; the `DBAPIError` the application catches is the wrapper
@@ -83,8 +87,8 @@ def statement_binding(
     each call with the database contract keys; shared with the
     dialects module for the overriding driver dialects."""
 
-    settings = instrumentation.settings
-    record_statement = bool(settings["statement"])
+    statements = instrumentation.settings["statements"]
+    record_statement = bool(statements["statement"])
 
     # The trio's signatures differ only in do_execute_no_params
     # dropping the parameters slot, moving context one position up.
@@ -128,9 +132,9 @@ def statement_binding(
         owner,
         name,
         category="database",
-        leaf=bool(settings["leaf"]),
         capture_args=captured,
         capture_result=captured,
+        **statements.options,
     )
     binding.on_call.decorates(executes)
 
@@ -142,7 +146,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     DefaultDialect; register their removal as this trigger's
     cleanup."""
 
-    settings = instrumentation.settings
+    connections = instrumentation.settings["connections"]
 
     def opens(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -158,9 +162,9 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         module.DefaultDialect,
         "connect",
         category="database",
-        leaf=bool(settings["leaf"]),
         capture_args="none",
         capture_result=captured,
+        **connections.options,
     )
     connect.on_call.decorates(opens)
 

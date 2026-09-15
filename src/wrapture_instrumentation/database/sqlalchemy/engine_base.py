@@ -10,6 +10,7 @@ deliberately exclude is the pool's own housekeeping: the
 reset-on-return rollback issued as a connection goes back to the
 pool happens below this seam, straight against the dialect, so
 pooled checkins do not spray rollback events through the timeline.
+Both bindings take the `connections` aspect's recording options.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the commit and rollback implementations on Connection;
     register their removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    connections = instrumentation.settings["connections"]
 
     def performs(operation: str) -> Any:
         def record(
@@ -56,9 +57,9 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             module.Connection,
             name,
             category="database",
-            leaf=bool(settings["leaf"]),
             capture_args=captured,
             capture_result=captured,
+            **connections.options,
         )
         binding.on_call.decorates(performs(operation))
 

@@ -101,7 +101,7 @@ def test_a_streamed_request_records_its_boundary(service: Service, tape: Tape) -
 
 
 def test_join_off_roots_a_trace_of_its_own(tape: Tape) -> None:
-    with instrumentation(GRPCInstrumentation, join=False):
+    with instrumentation(GRPCInstrumentation, server={"join": False}):
         serving = serve()
         service = next(serving)
         try:

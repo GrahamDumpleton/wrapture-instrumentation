@@ -56,7 +56,7 @@ def test_version_is_formatted_from_version_info() -> None:
 
 
 def test_version_is_pep_440_compliant() -> None:
-    # Enough of PEP 440 to cover the forms this project uses: a three-part
+    # Enough of PEP 440 to cover the forms this project uses: a three-aspect
     # release number with an optional pre-release, dev or post suffix.
 
     pattern = r"^\d+\.\d+\.\d+((a|b|rc)\d+|\.dev\d+|\.post\d+)?$"

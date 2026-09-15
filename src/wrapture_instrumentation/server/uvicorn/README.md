@@ -65,12 +65,32 @@ myapp:application(...)  -> '200 OK'  [4.1ms]
 - Websocket and lifespan traffic passes through completely
   untouched; only HTTP requests record.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the application uvicorn loaded, wrapped in the recording ASGI middleware, one request event per request | the query string with the built-in sensitive names masked, plus any a `redact` list adds |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, everything beneath it included. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `ignore_paths` | `requests` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, everything beneath it included. |
 
 ```toml
 [[instrument]]
@@ -78,7 +98,6 @@ name = "uvicorn"
 ignore_paths = ["/health"]
 redact = ["voucher"]
 ```
-
 ## How it patches
 
 For the implementation detail, including why the wrap lands inside

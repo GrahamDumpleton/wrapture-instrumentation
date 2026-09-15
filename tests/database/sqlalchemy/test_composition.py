@@ -63,7 +63,9 @@ def test_the_default_leaf_keeps_the_driver_out() -> None:
 def test_leaf_off_shows_the_driver_beneath() -> None:
     with (
         instrumentation(SQLite3Instrumentation),
-        instrumentation(SQLAlchemyInstrumentation, leaf=False),
+        instrumentation(
+            SQLAlchemyInstrumentation, leaf=False, connections={"leaf": False}
+        ),
         timeline() as tape,
     ):
         workload()

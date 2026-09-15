@@ -8,10 +8,11 @@ their own calls.
   instance's wsgi_app attribute, the documented place Flask middleware
   goes, so every request records as one "request" event however the
   instance was made: module level, an application factory, several
-  applications in one process. The ignore_paths setting rides on the
-  middleware as a filter_requests() filter with tree=True, so an
-  ignored request records nothing at all, its view, callbacks and
-  template renders included.
+  applications in one process. The requests aspect's ignore_paths
+  setting rides on the middleware as a filter_requests() filter with
+  tree=True, so an ignored request records nothing at all, its view,
+  callbacks and template renders included, and the aspect's recording
+  keys reach the middleware as they are.
 
 - Flask.add_url_rule substitutes wrapture.observed(view_func) as
   routes register, labelled with the route's endpoint, so every view
@@ -25,7 +26,11 @@ their own calls.
   could exist, which is why registration itself is the point to
   intercept. Registering the same function again hands this wrapper
   the caller's original callable, not the proxy from last time, so
-  views do not stack observations however often they register.
+  views do not stack observations however often they register. The
+  views aspect switches this binding and supplies its recording
+  options: by default a view's result records as its shape, since a
+  dict or list returned is the response body, and a
+  `[instrument.views]` table changes that.
 
 - Flask.preprocess_request runs once routing has matched and before
   any user code, which makes it the moment the matched route pattern
@@ -67,7 +72,7 @@ manager, take the whole thing down again.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import wrapture
@@ -75,17 +80,21 @@ import wrapture
 from .common import observing_registration
 
 
-def wrap_app(ignore_paths: Sequence[str], redact: Sequence[str]) -> Callable[..., Any]:
+def wrap_app(
+    ignore_paths: Sequence[str], options: Mapping[str, Any]
+) -> Callable[..., Any]:
     """Build the Flask.__init__ decorator that installs the recording
-    middleware on each new instance's wsgi_app, carrying the
-    ignore_paths and redact settings into it.
+    middleware on each new instance's wsgi_app, carrying the requests
+    aspect's ignore_paths setting and recording options into it.
 
     ignore_paths becomes a filter_requests() filter on the middleware's
     when=, with tree=True so that a declined request silences
     everything beneath it for its whole extent; without the flag the
     request's view, callbacks and renders would still record, each as
     a parentless root. tree= is only valid alongside a when=, so both
-    are left unset when there is nothing to ignore.
+    are left unset when there is nothing to ignore. The options pass
+    to the middleware as they are, a redact list already the capture
+    policy on top of the built-in sensitive set.
     """
 
     request_filter = (
@@ -93,7 +102,6 @@ def wrap_app(ignore_paths: Sequence[str], redact: Sequence[str]) -> Callable[...
         if ignore_paths
         else None
     )
-    policy = wrapture.redact(*redact) if redact else None
 
     def install(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -108,7 +116,7 @@ def wrap_app(ignore_paths: Sequence[str], redact: Sequence[str]) -> Callable[...
             label=f"{instance.name}.wsgi_app",
             when=request_filter,
             tree=request_filter is not None,
-            capture_args=policy,
+            **options,
         )
 
         return outcome
@@ -132,9 +140,10 @@ def _endpoint(args: tuple[Any, ...], kwargs: dict[str, Any], view: Any) -> str:
     return str(endpoint) if endpoint is not None else view.__name__
 
 
-def wrap_view() -> Callable[..., Any]:
+def wrap_view(options: Mapping[str, Any]) -> Callable[..., Any]:
     """Build the add_url_rule transformer that substitutes an observed
-    view function, labelled by its endpoint, into each registration.
+    view function, labelled by its endpoint and recording with the
+    views aspect's options, into each registration.
 
     The signature is add_url_rule(rule, endpoint=None, view_func=None,
     ...), so the view is either the view_func keyword or the third
@@ -149,11 +158,14 @@ def wrap_view() -> Callable[..., Any]:
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
         if kwargs.get("view_func") is not None:
             view = kwargs["view_func"]
-            observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
-            kwargs = dict(kwargs, view_func=observed)
+            label = _endpoint(args, kwargs, view)
+            kwargs = dict(
+                kwargs, view_func=wrapture.observed(view, label=label, **options)
+            )
         elif len(args) >= 3 and args[2] is not None:
             view = args[2]
-            observed = wrapture.observed(view, label=_endpoint(args, kwargs, view))
+            label = _endpoint(args, kwargs, view)
+            observed = wrapture.observed(view, label=label, **options)
             args = (*args[:2], observed, *args[3:])
 
         return args, kwargs
@@ -233,31 +245,34 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     group's removal as this trigger's cleanup."""
 
     settings = instrumentation.settings
+    requests = settings["requests"]
 
     constructor = wrapture.binding(module.Flask, "__init__", when=False)
-    constructor.on_call.decorates(
-        wrap_app(settings["ignore_paths"], settings["redact"])
-    )
-
-    registrar = wrapture.binding(module.Flask, "add_url_rule", when=False)
-    registrar.on_call.transforms_args(wrap_view())
+    constructor.on_call.decorates(wrap_app(requests["ignore_paths"], requests.options))
 
     router = wrapture.binding(module.Flask, "preprocess_request", when=False)
     router.on_call.decorates(annotate_route)
 
     named: dict[str, wrapture.Binding] = {
         "constructor": constructor,
-        "registrar": registrar,
         "router": router,
     }
 
-    # The category settings: teardown_appcontext registration is
-    # lifecycle observation, and the handle_user_exception noting is
-    # the handled-errors layer; each binds only when its switch is on.
+    # The aspects: view registration is the views aspect,
+    # teardown_appcontext registration is lifecycle observation, and
+    # the handle_user_exception noting is the handled-errors setting;
+    # each binds only when its switch is on.
 
-    if settings["lifecycle"]:
+    views = settings["views"]
+    if views.enabled:
+        registrar = wrapture.binding(module.Flask, "add_url_rule", when=False)
+        registrar.on_call.transforms_args(wrap_view(views.options))
+        named["registrar"] = registrar
+
+    lifecycle = settings["lifecycle"]
+    if lifecycle.enabled:
         appcontext = wrapture.binding(module.Flask, "teardown_appcontext", when=False)
-        appcontext.on_call.decorates(observing_registration(0, "f"))
+        appcontext.on_call.decorates(observing_registration(0, "f", lifecycle.options))
         named["appcontext"] = appcontext
 
     if settings["handled_errors"]:

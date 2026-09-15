@@ -14,8 +14,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import config
 
 
@@ -32,16 +33,22 @@ class UvicornInstrumentation(wrapture.Instrumentation):
     removable = True
 
     settings = {
-        "ignore_paths": Setting(
-            [],
-            "request paths not to record, as path globs ('/health', '/static/*')",
-        ),
-        "redact": Setting(
-            [],
-            "query string parameters to mask by name, on top of the"
-            " built-in sensitive set",
+        "requests": Aspect(
+            "the request boundary: the application uvicorn loaded, one event"
+            " per request",
+            primary=True,
+            ignore_paths=Setting(
+                [],
+                "request paths not to record, as path globs ('/health', '/static/*')",
+            ),
         ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the boundary middleware cannot
+        honour."""
+
+        aspects.honours(self, "requests", "capture_args", "capture_result", "leaf")
 
     @wrapture.instrumentation_hook("uvicorn.config")
     def uvicorn_config(self, name: str, module: Any) -> None:

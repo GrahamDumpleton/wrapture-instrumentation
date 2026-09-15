@@ -10,7 +10,7 @@ from importlib import metadata
 # so the applying test below works with this file run on its own.
 import jinja2  # noqa: F401
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.template.jinja2 import Jinja2Instrumentation
 
@@ -21,11 +21,20 @@ def test_class_data() -> None:
     assert Jinja2Instrumentation.supports == ">=3.0,<4"
     assert Jinja2Instrumentation.requires == ()
 
-    # One switch: the loading pipeline. The renders are the point
-    # and have none.
+    settings = Jinja2Instrumentation.settings
+    assert list(settings) == ["renders", "loading"]
 
-    assert set(Jinja2Instrumentation.settings) == {"loading"}
-    assert Jinja2Instrumentation.settings["loading"].default is True
+    renders = settings["renders"]
+    assert isinstance(renders, Aspect)
+    assert renders.primary is True
+    assert renders.defaults == {}
+    assert set(renders.settings) == set()
+
+    loading = settings["loading"]
+    assert isinstance(loading, Aspect)
+    assert loading.primary is False
+    assert loading.defaults == {}
+    assert set(loading.settings) == set()
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -37,14 +46,32 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = Jinja2Instrumentation()
 
-    assert instance.settings == {"loading": True}
+    renders = instance.settings["renders"]
+    assert renders.enabled is True
+    assert renders.options == {}
+    assert renders.settings == {}
+
+    loading = instance.settings["loading"]
+    assert loading.enabled is True
+    assert loading.options == {}
+    assert loading.settings == {}
     assert instance.applied == ()
     assert instance.pending == ("jinja2.environment",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="ignore_names"):
-        Jinja2Instrumentation(ignore_names=["base.html"])
+    with pytest.raises(ConfigError, match="verbosity"):
+        Jinja2Instrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'renders': capture_result"):
+        Jinja2Instrumentation(renders={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'renders': unknown keys"):
+        Jinja2Instrumentation(renders={"verbosity": 2})
 
 
 def test_the_installed_jinja2_is_within_supports() -> None:

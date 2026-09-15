@@ -21,8 +21,9 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect, Setting
 
+from ... import aspects
 from . import interceptors
 
 
@@ -35,28 +36,33 @@ class GRPCInstrumentation(wrapture.Instrumentation):
     supports = ">=1.76,<2"
     removable = True
 
+    # Two aspects and no primary one: the client side and the server
+    # side are peers, each with its own switch and setting.
+
     settings = {
-        "client": Setting(
-            True,
-            "record every RPC made through a channel as an external"
-            " leaf, the trace identity carried in its metadata",
+        "client": Aspect(
+            "every RPC made through a channel, as an external leaf",
+            propagate=Setting(
+                True,
+                "add the current trace identity to each outgoing RPC's"
+                " metadata so the service called can join the trace",
+            ),
         ),
-        "server": Setting(
-            True,
-            "record every RPC the server handles as a request"
-            " boundary, joining the trace the metadata carries",
-        ),
-        "propagate": Setting(
-            True,
-            "add the current trace identity to each outgoing RPC's"
-            " metadata so the service called can join the trace",
-        ),
-        "join": Setting(
-            True,
-            "join the distributed trace an incoming RPC's metadata"
-            " carries instead of rooting a new one",
+        "server": Aspect(
+            "every RPC the server handles, as a request boundary",
+            join=Setting(
+                True,
+                "join the distributed trace an incoming RPC's metadata"
+                " carries instead of rooting a new one",
+            ),
         ),
     }
+
+    def configure(self) -> None:
+        """Refuse the recording keys the server boundary cannot honour:
+        the handler runs inside a block, which records no values."""
+
+        aspects.honours(self, "server", "stack", "leaf")
 
     @wrapture.instrumentation_hook("grpc")
     def grpc(self, name: str, module: Any) -> None:

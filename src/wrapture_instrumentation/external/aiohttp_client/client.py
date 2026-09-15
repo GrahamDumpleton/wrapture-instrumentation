@@ -26,7 +26,7 @@ carries an exception only when the exchange really failed (a refused
 connection, a name that does not resolve), in which case there is no
 status. The query is recorded as wrapture.capture_query() gives it:
 the built-in sensitive names masked whatever else is said, and the
-redact setting's names masked on top. Query parameters supplied
+requests aspect's redact names masked on top. Query parameters supplied
 through the `params=` argument rather than in the URL are not folded
 into the recording, and the request body is never recorded: the
 call's arguments are not captured at all (_request's signature is
@@ -48,6 +48,8 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
+
+from ... import aspects
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -124,17 +126,19 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     the leaf setting, propagating the trace by the propagate setting;
     register the binding's removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
     # CIMultiDict is aiohttp's own header container, present wherever
-    # aiohttp is; the query policy is redact() with the setting's
-    # names, or the reference level, either way on top of the built-in
-    # sensitive set.
+    # aiohttp is. The query policy is the requests aspect's capture_args
+    # (a redact list already composed into it) or the reference level,
+    # either way on top of the built-in sensitive set; the aspect's other
+    # keys splat over the binding's own options.
 
     from multidict import CIMultiDict
 
-    names = tuple(settings["redact"])
-    policy: Any = wrapture.redact(*names) if names else "reference"
+    policy, options = aspects.boundary_options(
+        requests, category="external", capture_args="none", capture_result="types"
+    )
 
     def propagate_into(kwargs: dict[str, Any]) -> None:
         """Add the current trace identity to the request's headers
@@ -170,7 +174,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         owned = bool(wrapture.current_event(binding=request))
 
-        if owned and settings["propagate"]:
+        if owned and requests["propagate"]:
             propagate_into(kwargs)
 
         if owned:
@@ -186,14 +190,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return response
 
-    request = wrapture.binding(
-        module.ClientSession,
-        "_request",
-        leaf=settings["leaf"],
-        category="external",
-        capture_args="none",
-        capture_result="types",
-    )
+    request = wrapture.binding(module.ClientSession, "_request", **options)
     request.on_call.decorates(record)
 
     group = wrapture.bindings(request=request)

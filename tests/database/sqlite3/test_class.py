@@ -12,7 +12,7 @@ import sqlite3  # noqa: F401
 import warnings
 
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.database.sqlite3 import SQLite3Instrumentation
 
@@ -23,8 +23,21 @@ def test_class_data() -> None:
     assert SQLite3Instrumentation.requires == ()
     assert SQLite3Instrumentation.supports == ">=3.12"
 
-    assert set(SQLite3Instrumentation.settings) == {"statement"}
-    assert SQLite3Instrumentation.settings["statement"].default is False
+    settings = SQLite3Instrumentation.settings
+    assert list(settings) == ["statements", "connections"]
+
+    statements = settings["statements"]
+    assert isinstance(statements, Aspect)
+    assert statements.primary is True
+    assert statements.defaults == {"leaf": True}
+    assert set(statements.settings) == {"statement"}
+    assert statements.settings["statement"].default is False
+
+    connections = settings["connections"]
+    assert isinstance(connections, Aspect)
+    assert connections.primary is False
+    assert connections.defaults == {"leaf": True}
+    assert set(connections.settings) == set()
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -36,14 +49,32 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = SQLite3Instrumentation()
 
-    assert instance.settings == {"statement": False}
+    statements = instance.settings["statements"]
+    assert statements.enabled is True
+    assert statements.options == {"leaf": True}
+    assert statements.settings == {"statement": False}
+
+    connections = instance.settings["connections"]
+    assert connections.enabled is True
+    assert connections.options == {"leaf": True}
+    assert connections.settings == {}
     assert instance.applied == ()
     assert instance.pending == ("sqlite3",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="leaf"):
-        SQLite3Instrumentation(leaf=False)
+    with pytest.raises(ConfigError, match="verbosity"):
+        SQLite3Instrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'statements': capture_result"):
+        SQLite3Instrumentation(statements={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'statements': unknown keys"):
+        SQLite3Instrumentation(statements={"verbosity": 2})
 
 
 def test_the_running_python_is_within_supports() -> None:

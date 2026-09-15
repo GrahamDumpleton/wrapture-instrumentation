@@ -37,7 +37,8 @@ follows the child's own configuration.
 The request boundary is where distributed trace identity arrives: a
 request carrying a `traceparent` header joins the caller's trace,
 and the query string is recorded with the built-in sensitive names
-masked, plus any the `redact` setting adds. `ignore_paths` becomes a
+masked, plus any the `redact` key of the `requests` aspect adds, whose
+other recording keys reach the middleware as they are. `ignore_paths` becomes a
 filter_requests() filter on the middleware's when=, with tree=True,
 so an ignored request records nothing at all, beneath it included.
 """
@@ -53,20 +54,20 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind BaseWSGIServer.__init__ to interpose the recording
     middleware; register its removal as this trigger's cleanup."""
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
-    # The settings become the middleware's own options, built once:
-    # ignored paths a filter on when= (tree=True so a declined request
-    # silences its whole extent), redacted names a capture policy on
+    # The requests aspect becomes the middleware's own options, built
+    # once: ignored paths a filter on when= (tree=True so a declined
+    # request silences its whole extent), and the aspect's recording
+    # keys as they are, a redact list already the capture policy on
     # top of the built-in sensitive set.
 
+    ignore_paths = requests["ignore_paths"]
     request_filter = (
-        wrapture.filter_requests(ignore={"path": list(settings["ignore_paths"])})
-        if settings["ignore_paths"]
+        wrapture.filter_requests(ignore={"path": list(ignore_paths)})
+        if ignore_paths
         else None
     )
-
-    policy = wrapture.redact(*settings["redact"]) if settings["redact"] else None
 
     def wrap(app: Any) -> Any:
         # No application, or one already wrapped, passes through.
@@ -78,7 +79,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
             app,
             when=request_filter,
             tree=request_filter is not None,
-            capture_args=policy,
+            **requests.options,
         )
 
     def interpose(

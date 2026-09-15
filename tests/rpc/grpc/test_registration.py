@@ -85,19 +85,19 @@ def test_the_listing_tool_describes_the_entry() -> None:
     # The listing pads the setting names into a column, so the name
     # and its description are checked apart.
 
-    assert "    client = true " in output
-    assert "record every RPC made through a channel as an external leaf" in output
-    assert "    server = true " in output
-    assert "record every RPC the server handles as a request boundary" in output
-    assert "    propagate = true " in output
-    assert "    join = true " in output
+    assert "    client:" in output
+    assert "every RPC made through a channel, as an external leaf" in output
+    assert "    server:" in output
+    assert "every RPC the server handles, as a request boundary" in output
+    assert "      propagate = true" in output
+    assert "      join = true" in output
 
 
 def test_the_toml_template_carries_the_settings() -> None:
     output = run_tool("instrumentation", "--toml")
 
     assert '[[instrument]]\nname = "grpc"\nenabled = false' in output
-    assert "# client = true" in output
-    assert "# server = true" in output
+    assert "# [instrument.client]" in output
+    assert "# [instrument.server]" in output
     assert "# propagate = true" in output
     assert "# join = true" in output

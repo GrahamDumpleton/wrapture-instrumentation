@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
-from wrapture import Setting
+from wrapture import Aspect
 
 from . import environment
 
@@ -27,13 +27,16 @@ class Jinja2Instrumentation(wrapture.Instrumentation):
     supports = ">=3.0,<4"
     removable = True
 
-    # The renders (sync, async, streamed) are the point and have no
-    # switch; loading gates the machinery of getting a template ready.
+    # The aspects: the renders (sync, async, streamed) are the primary
+    # aspect, and loading is the machinery of getting a template ready.
 
     settings = {
-        "loading": Setting(
-            True,
-            "observe template loading and compilation"
+        "renders": Aspect(
+            "template rendering: render, generate and their async forms",
+            primary=True,
+        ),
+        "loading": Aspect(
+            "template loading and compilation"
             " (Environment._load_template and Environment.compile)",
         ),
     }

@@ -76,18 +76,42 @@ defines its own `_dispatch` (the legacy hook `do_POST` still
 honours) bypasses the per-procedure event, though the boundary still
 records.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the POST handler, one `server` boundary per request | a `block()` event, which captures no values: the aspect takes `stack` and `leaf` and refuses the capture keys |
+| `methods` | each dispatched procedure on `_dispatch`, beneath its request | params as a count (`capture_args`) and the result as its shape (`capture_result = "shape"`), both being application data whatever their form |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.methods]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `methods = false` on the entry means the same. The primary aspect's
+keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `join` | `true` | Whether the boundary joins the distributed trace an arriving request's `traceparent` header carries. Off, every request roots a trace of its own and the headers are never parsed. Recording is unaffected. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `join` | `requests` | `true` | Whether the boundary joins the distributed trace an arriving request's `traceparent` header carries. Off, every request roots a trace of its own and the headers are never parsed. Recording is unaffected. |
 
 ```toml
 [[instrument]]
 name = "xmlrpc.server"
 join = false
-```
 
+[instrument.methods]
+capture_result = "summary"
+```
 ## How it patches
 
 For the implementation detail see the module docstring of

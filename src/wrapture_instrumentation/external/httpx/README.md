@@ -62,7 +62,7 @@ redirects), and then there is no status.
 - httpx follows redirects only when asked. Unasked, the caller sees
   the 3xx itself and the event carries it. With `follow_redirects`
   on, the hops are resolved in a loop inside the one send, so a
-  followed redirect is one event whatever the `leaf` setting says,
+  followed redirect is one event whatever the `leaf` key says,
   named by the URL the application asked for and carrying the status
   of where it ended up.
 
@@ -83,19 +83,38 @@ redirects), and then there is no status.
   string is recorded once, as `query`, in the form wrapture's request
   middlewares record it inbound, with the built-in sensitive names
   (passwords, tokens, keys, session ids and signatures) always
-  masked and the `redact` setting's names masked on top; the
+  masked and the `redact` key's names masked on top; the
   captured `request` argument and the `url` key carry no query and
   no userinfo credentials at all. The request body is never
   recorded, and the response reduces to its type. The application's
   own request headers are not recorded.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | every send through a `Client` or an `AsyncClient`, as one external event | `leaf = true`; the recorded `query` through `capture_args` (a `redact` list composes into it), the call's own arguments and the response reduced by the package whatever the level: the URL without its query, a body as its size, a response as its type |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `leaf` | `true` | Whether each send is a terminal node. Off, anything else instrumented beneath it shows. httpx does not sit on `http.client`, and its redirect hops are not nested sends, so unlike the requests target there is nothing further from httpx itself to expose. |
-| `propagate` | `true` | Whether the trace identity is added to each request's headers. Off when calling services that should not see it, or when the application manages its own trace headers. Recording is unaffected. |
-| `redact` | `[]` | Query string parameters to mask by name in the recorded `query`, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the server; only the recording is masked. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `propagate` | `requests` | `true` | Whether the trace identity is added to each request's headers. Off when calling services that should not see it, or when the application manages its own trace headers. Recording is unaffected. |
 
 ```toml
 [[instrument]]
@@ -103,7 +122,6 @@ name = "httpx"
 propagate = false
 redact = ["voucher"]
 ```
-
 ## With a framework instrumentation
 
 Nothing to configure: with `flask` applied as well, a request handled

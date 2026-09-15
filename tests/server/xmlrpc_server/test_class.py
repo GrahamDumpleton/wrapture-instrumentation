@@ -12,7 +12,7 @@ import warnings
 import xmlrpc.server  # noqa: F401
 
 import pytest
-from wrapture import ConfigError, ConfigWarning, instrumentation
+from wrapture import Aspect, ConfigError, ConfigWarning, instrumentation
 
 from wrapture_instrumentation.server.xmlrpc_server import XMLRPCServerInstrumentation
 
@@ -23,8 +23,22 @@ def test_class_data() -> None:
     assert XMLRPCServerInstrumentation.requires == ()
     assert XMLRPCServerInstrumentation.supports == ">=3.12"
 
-    assert set(XMLRPCServerInstrumentation.settings) == {"join"}
-    assert XMLRPCServerInstrumentation.settings["join"].default is True
+    settings = XMLRPCServerInstrumentation.settings
+    assert list(settings) == ["requests", "methods"]
+
+    requests = settings["requests"]
+    assert isinstance(requests, Aspect)
+    assert requests.primary is True
+    assert requests.defaults == {}
+    assert set(requests.settings) == {"join"}
+    assert requests.settings["join"].default is True
+
+    methods = settings["methods"]
+    assert isinstance(methods, Aspect)
+    assert methods.primary is False
+    assert callable(methods.defaults["capture_args"])
+    assert methods.defaults["capture_result"] == "shape"
+    assert set(methods.settings) == set()
 
 
 def test_the_description_is_the_docstring_first_line() -> None:
@@ -36,14 +50,33 @@ def test_the_description_is_the_docstring_first_line() -> None:
 def test_constructing_without_settings_works() -> None:
     instance = XMLRPCServerInstrumentation()
 
-    assert instance.settings == {"join": True}
+    requests = instance.settings["requests"]
+    assert requests.enabled is True
+    assert requests.options == {}
+    assert requests.settings == {"join": True}
+
+    methods = instance.settings["methods"]
+    assert methods.enabled is True
+    assert callable(methods.options["capture_args"])
+    assert methods.options["capture_result"] == "shape"
+    assert methods.settings == {}
     assert instance.applied == ()
     assert instance.pending == ("xmlrpc.server",)
 
 
 def test_an_undeclared_setting_is_refused() -> None:
-    with pytest.raises(ConfigError, match="leaf"):
-        XMLRPCServerInstrumentation(leaf=False)
+    with pytest.raises(ConfigError, match="verbosity"):
+        XMLRPCServerInstrumentation(verbosity=2)
+
+
+def test_a_recording_key_under_a_part_is_checked() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': capture_result"):
+        XMLRPCServerInstrumentation(requests={"capture_result": "sumary"})
+
+
+def test_an_unknown_key_under_a_part_is_refused() -> None:
+    with pytest.raises(ConfigError, match="aspect 'requests': unknown keys"):
+        XMLRPCServerInstrumentation(requests={"verbosity": 2})
 
 
 def test_the_running_python_is_within_supports() -> None:

@@ -2,31 +2,37 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import wrapture
 
 
-def request_options(instrumentation: wrapture.Instrumentation) -> tuple[Any, Any]:
-    """The request filter and capture policy both boundaries share.
+def request_options(
+    instrumentation: wrapture.Instrumentation,
+) -> tuple[Any, Mapping[str, Any]]:
+    """The request filter and recording options both boundaries share,
+    from the requests aspect.
 
     ignore_paths becomes a filter_requests() filter for the
-    middleware's when=, redact a capture policy on top of the built-in
-    sensitive set. tree= is only valid alongside a when=, so the
-    filter is left as None when there is nothing to ignore and the
-    caller passes tree= only when a filter came back.
+    middleware's when=; the aspect's recording keys pass to the
+    middleware as they are, a redact list already the capture policy
+    on top of the built-in sensitive set. tree= is only valid
+    alongside a when=, so the filter is left as None when there is
+    nothing to ignore and the caller passes tree= only when a filter
+    came back.
     """
 
-    settings = instrumentation.settings
+    requests = instrumentation.settings["requests"]
 
+    ignore_paths = requests["ignore_paths"]
     request_filter = (
-        wrapture.filter_requests(ignore={"path": list(settings["ignore_paths"])})
-        if settings["ignore_paths"]
+        wrapture.filter_requests(ignore={"path": list(ignore_paths)})
+        if ignore_paths
         else None
     )
-    policy = wrapture.redact(*settings["redact"]) if settings["redact"] else None
 
-    return request_filter, policy
+    return request_filter, requests.options
 
 
 def operation_of(sql: Any) -> str:
@@ -57,3 +63,6 @@ def captured(name: str | None, value: Any) -> Any:
         return f"<{type(value).__name__}>"
 
     return value
+
+
+captured.description = "SQL as its length, parameters as a count"  # type: ignore[attr-defined]

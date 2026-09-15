@@ -16,8 +16,8 @@ covers only DTL templates and does not double up.
 
 The capture policy is deliberate about sensitive data: the render
 context is masked wholesale (it is arbitrary application data), and
-the rendered output reports only its size. The templates setting
-gates the whole trigger.
+the rendered output reports only its size. The templates aspect gates
+the whole trigger and its recording keys replace the policy.
 """
 
 from __future__ import annotations
@@ -39,6 +39,9 @@ def masked(name: str | None, value: Any) -> Any:
     return "<context>"
 
 
+masked.description = "the context masked, the output as its size"  # type: ignore[attr-defined]
+
+
 def stamp_template(
     wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> Any:
@@ -55,10 +58,12 @@ def stamp_template(
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the render on Template and register its removal as this
-    trigger's cleanup. The templates setting gates the whole trigger:
-    with it off, nothing binds and there is nothing to clean up."""
+    trigger's cleanup. The templates aspect gates the whole trigger,
+    with it off nothing binds and there is nothing to clean up, and
+    its recording options splat over the masking policy."""
 
-    if not instrumentation.settings["templates"]:
+    templates = instrumentation.settings["templates"]
+    if not templates.enabled:
         return
 
     render = wrapture.binding(
@@ -67,6 +72,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
         category="template",
         capture_args=masked,
         capture_result=masked,
+        **templates.options,
     )
     render.on_call.decorates(stamp_template)
 

@@ -70,18 +70,39 @@ the path or `:memory:`), alongside the contract keys below.
   returns, so time spent iterating rows afterwards is not attributed
   to the database.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `statements` (primary) | `execute`, `executemany` and `executescript` on cursors and as the connection's shortcut forms, as database events | `leaf = true`; SQL as its length and parameters as a count, an explicit capture key under the aspect replacing that |
+| `connections` | `connect`, `commit`, `rollback` and the commit-or-rollback context manager exit, as database events | `leaf = true`; SQL as its length and parameters as a count, an explicit capture key under the aspect replacing that |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.connections]`, and takes the recording keys an
+`[[observe]]` entry does (`capture`, `capture_args`, `capture_result`,
+`redact`, `redact_result`, `redact_marker`, `leaf` and `stack`) beside
+the settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `connections = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `statement` | `false` | Whether each query event records the SQL text as written, as `statement`. Off by default because sqlite3 code commonly interpolates literals into its SQL; turn it on when your queries are parameterized, the text then carrying placeholders rather than data. Bound parameters are never recorded either way. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `statement` | `statements` | `false` | Whether each query event records the SQL text as written, as `statement`. Off by default because sqlite3 code commonly interpolates literals into its SQL; turn it on when your queries are parameterized, the text then carrying placeholders rather than data. Bound parameters are never recorded either way. |
 
 ```toml
 [[instrument]]
 name = "sqlite3"
 statement = true
 ```
-
 ## How it patches
 
 For the implementation detail see the module docstring of

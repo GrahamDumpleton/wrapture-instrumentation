@@ -30,21 +30,24 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     apply them as one group, and register the group's removal as this
     trigger's cleanup.
 
-    Everything here is lifecycle observation, so with the setting off
+    Everything here is lifecycle observation, so with the aspect off
     the trigger applies nothing and there is nothing to clean up.
     """
 
-    if not instrumentation.settings["lifecycle"]:
+    lifecycle = instrumentation.settings["lifecycle"]
+    if not lifecycle.enabled:
         return
 
+    observing = observing_registration(0, "f", lifecycle.options)
+
     before = wrapture.binding(module.Blueprint, "before_app_request", when=False)
-    before.on_call.decorates(observing_registration(0, "f"))
+    before.on_call.decorates(observing)
 
     after = wrapture.binding(module.Blueprint, "after_app_request", when=False)
-    after.on_call.decorates(observing_registration(0, "f"))
+    after.on_call.decorates(observing)
 
     teardown = wrapture.binding(module.Blueprint, "teardown_app_request", when=False)
-    teardown.on_call.decorates(observing_registration(0, "f"))
+    teardown.on_call.decorates(observing)
 
     group = wrapture.bindings(before=before, after=after, teardown=teardown)
     group.apply()

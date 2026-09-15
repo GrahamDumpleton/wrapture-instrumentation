@@ -130,24 +130,39 @@ instrumentation applied: that reference is the original function and
 its renders go unobserved, where under the runner every spelling is
 observed.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the WSGI application on `wsgi_app`, one request event per request | the query string with the built-in sensitive names masked, plus any a `redact` list adds |
+| `views` | view functions, observed as their routes register | the result as its shape (`capture_result = "shape"`), since a dict or list returned is the response body; the arguments are URL parameters and follow the sinks' level |
+| `lifecycle` | before, after and teardown callbacks, observed as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the aspect to switch off when the trees are noisier than they are informative; the callbacks still run, unobserved | the sinks' level |
+| `handlers` | error handlers, observed as they register | the result as its shape (`capture_result = "shape"`), since a handler returns a response body |
+| `templates` | template rendering through `render_template` and the stream functions | the template name, the context masked and the output as its size, an explicit capture key under the aspect replacing that |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.views]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `views = false` on the entry means the same. The primary aspect's
+keys may be written flat on the entry. The route and endpoint annotation
+and the unhandled-exception noting belong to no aspect: they are the
+point of the instrumentation and always apply. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-The instrumentation is layered, and the optional layers have
-switches; the core (the request tree, route and endpoint annotation,
-view observation, error handler observation, and unhandled-exception
-noting) is the point of the instrumentation and is always on. Two
-settings shape what a recorded request carries rather than switching
-a layer:
-
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`"/health"`, `"/static/*"`). A matching request runs and answers as normal but records nothing at all: the request event is skipped and everything beneath it is silenced for the request's whole extent, its view, lifecycle callbacks, error handlers and template renders included, so no stray roots appear. It is wrapture's `filter_requests(ignore={"path": [...]})` with `tree=True` on the middleware. |
-| `redact` | `[]` | Query string parameters to mask by name in the recorded query, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
-| `lifecycle` | `true` | Observing before/after/teardown callbacks as they register. Every registered callback runs on every request (extensions register these liberally: user loaders, session cleanup, header stamping), so this is the layer to switch off when the trees are noisier than they are informative. The callbacks still run; they run unobserved. |
-| `handled_errors` | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
-| `templates` | `true` | Observing template rendering. One event per render, so rarely noisy; the switch exists for apps rendering very large numbers of partials. |
-
-Settings go in the `[[instrument]]` entry:
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `ignore_paths` | `requests` | `[]` | Request paths not to record, as path globs (`"/health"`, `"/static/*"`). A matching request runs and answers as normal but records nothing at all: the request event is skipped and everything beneath it is silenced for the request's whole extent, its view, lifecycle callbacks, error handlers and template renders included, so no stray roots appear. It is wrapture's `filter_requests(ignore={"path": [...]})` with `tree=True` on the middleware. |
+| `handled_errors` | the entry | `true` | Noting an exception a registered handler absorbed against its request. The handler's own run is core and stays observed either way. |
 
 ```toml
 [[instrument]]
@@ -155,8 +170,10 @@ name = "flask"
 ignore_paths = ["/health", "/static/*"]
 redact = ["voucher"]
 lifecycle = false
-```
 
+[instrument.views]
+redact_result = true
+```
 ## Deliberately not traced
 
 - Flask's internal request-processing machinery

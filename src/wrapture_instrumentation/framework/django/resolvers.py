@@ -25,11 +25,14 @@ function to Django's own checks, async views included: Django's
 coroutine-function test passes through the proxy, so an async view
 is still awaited.
 
-The observed view's capture policy reduces the request argument to
-its type: unlike Starlette's, Django's request repr carries the raw
-path and query string, which would put an unredacted query into the
-captured arguments. Everything else a view receives came out of the
-URL itself and passes.
+The observed view's capture policy, the `views` aspect's declared
+default, reduces the request argument to its type: unlike
+Starlette's, Django's request repr carries the raw path and query
+string, which would put an unredacted query into the captured
+arguments. Everything else a view receives came out of the URL itself
+and passes. The result records as its shape, since a dict or list
+returned is the response body. A `[instrument.views]` table replaces
+either, and switches the observation off.
 
 Two deliberate gaps: resolve("/x/").func is the proxy under
 instrumentation (equality and introspection delegate, `is` does
@@ -41,6 +44,7 @@ observed.
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import wrapture
@@ -59,11 +63,13 @@ def masked(name: str | None, value: Any) -> Any:
     return value
 
 
-def observing_views(
-    args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    """Substitute an observed view, labelled by the URL pattern's
-    name, into a ResolverMatch construction.
+masked.description = "the request as its type, URL arguments as they are"  # type: ignore[attr-defined]
+
+
+def observing_views(options: Mapping[str, Any]) -> Callable[..., Any]:
+    """Build the transform that substitutes an observed view, labelled
+    by the URL pattern's name and recording with the views aspect's
+    options, into a ResolverMatch construction.
 
     The signature is ResolverMatch(func, args, kwargs, url_name=None,
     ...), func always first, so the view is the first positional
@@ -71,39 +77,49 @@ def observing_views(
     positional or the url_name keyword.
     """
 
-    if "func" in kwargs:
-        func = kwargs["func"]
-    elif args:
-        func = args[0]
-    else:
-        return args, kwargs
+    def transform(
+        args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if "func" in kwargs:
+            func = kwargs["func"]
+        elif args:
+            func = args[0]
+        else:
+            return args, kwargs
 
-    if not (inspect.isfunction(func) or inspect.ismethod(func)):
-        return args, kwargs
+        if not (inspect.isfunction(func) or inspect.ismethod(func)):
+            return args, kwargs
 
-    url_name = kwargs.get("url_name")
-    if url_name is None and len(args) >= 4:
-        url_name = args[3]
+        url_name = kwargs.get("url_name")
+        if url_name is None and len(args) >= 4:
+            url_name = args[3]
 
-    observed = wrapture.observed(func, label=url_name, capture_args=masked)
+        observed = wrapture.observed(func, label=url_name, **options)
 
-    if "func" in kwargs:
-        return args, {**kwargs, "func": observed}
+        if "func" in kwargs:
+            return args, {**kwargs, "func": observed}
 
-    return (observed, *args[1:]), kwargs
+        return (observed, *args[1:]), kwargs
+
+    return transform
 
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind ResolverMatch's construction and register its removal as
-    this trigger's cleanup.
+    this trigger's cleanup. The views aspect gates the whole trigger:
+    with it off, nothing binds and there is nothing to clean up.
 
     Removal is complete on its own: the only proxies ever made live
     in per-request ResolverMatch objects, so restoring __init__
     restores the world.
     """
 
+    views = instrumentation.settings["views"]
+    if not views.enabled:
+        return
+
     constructor = wrapture.binding(module.ResolverMatch, "__init__", when=False)
-    constructor.on_call.transforms_args(observing_views)
+    constructor.on_call.transforms_args(observing_views(views.options))
 
     group = wrapture.bindings(constructor=constructor)
     group.apply()

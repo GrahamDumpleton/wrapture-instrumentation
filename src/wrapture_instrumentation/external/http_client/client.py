@@ -16,7 +16,7 @@ event sits above these. What records is the wire work itself:
 - HTTPConnection.putrequest is the request line. The method passes;
   the url is a path with, possibly, a query string, and the query is
   recorded through wrapture.capture_query(), the built-in sensitive
-  names masked and the redact setting's names masked on top.
+  names masked and the requests aspect's redact names masked on top.
 
 - HTTPConnection.endheaders is the headers and any body going out on
   the wire; the body reduces to its size.
@@ -42,6 +42,8 @@ from __future__ import annotations
 from typing import Any
 
 import wrapture
+
+from ... import aspects
 
 
 def stamp_connect(
@@ -72,12 +74,12 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the four phases on HTTPConnection as one group; register
     the group's removal as this trigger's cleanup."""
 
-    # The query policy for putrequest's url: redact() with the
-    # setting's names, or the reference level, either way on top of
-    # the built-in sensitive set.
+    # The query policy for putrequest's url is the requests aspect's
+    # capture_args (a redact list already composed into it) or the
+    # reference level, either way on top of the built-in sensitive
+    # set; the aspect's other keys splat over each phase's own options.
 
-    names = tuple(instrumentation.settings["redact"])
-    policy: Any = wrapture.redact(*names) if names else "reference"
+    policy, options = aspects.boundary_options(instrumentation.settings["requests"])
 
     def captured(name: str | None, value: Any) -> Any:
         """Bodies reduce to sizes, responses to types, and a url's
@@ -99,19 +101,24 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
     connection = module.HTTPConnection
 
-    connect = wrapture.binding(connection, "connect", capture_args=captured)
+    connect = wrapture.binding(
+        connection, "connect", **{"capture_args": captured, **options}
+    )
     connect.on_call.decorates(stamp_connect)
 
-    putrequest = wrapture.binding(connection, "putrequest", capture_args=captured)
+    putrequest = wrapture.binding(
+        connection, "putrequest", **{"capture_args": captured, **options}
+    )
 
     endheaders = wrapture.binding(
         connection,
         "endheaders",
-        capture_args=captured,
-        capture_result=captured,
+        **{"capture_args": captured, "capture_result": captured, **options},
     )
 
-    getresponse = wrapture.binding(connection, "getresponse", capture_result=captured)
+    getresponse = wrapture.binding(
+        connection, "getresponse", **{"capture_result": captured, **options}
+    )
     getresponse.on_call.decorates(stamp_response)
 
     group = wrapture.bindings(

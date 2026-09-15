@@ -111,24 +111,50 @@ GET /quote/widget/ (django.core.handlers.wsgi:WSGIHandler.__call__)  -> '200 OK'
   instrumentation covers only DTL templates and the two never double
   up.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | the WSGI and ASGI handlers, one request event per request | the query string with the built-in sensitive names masked, plus any a `redact` list adds |
+| `views` | view functions, observed as URLs resolve | the request argument as its type and URL arguments as they are (`capture_args`), the result as its shape (`capture_result = "shape"`), since a dict or list returned is the response body |
+| `queries` | ORM statements and transaction ends at the cursor and connection seams, as database events | `leaf = true`; SQL as its length and parameters as a count, an explicit capture key under the aspect replacing that |
+| `templates` | Django template rendering beneath the view that asked for it | the context masked and the output as its size, an explicit capture key under the aspect replacing that |
+| `exceptions` | noting an unhandled exception against its request | a switch only: the noting is a behaviour and records no values |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.views]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `views = false` on the entry means the same. The primary aspect's
+keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `ignore_paths` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its view, queries and template renders included. |
-| `redact` | `[]` | Query string parameters to mask by name, on top of the built-in sensitive set (passwords, tokens, keys and session ids are always masked). The parameter still reaches the application; only the recording is masked. |
-| `queries` | `true` | Record ORM statements and transaction ends as database events. |
-| `statement` | `false` | Record the SQL text on each query event, as compiled with placeholders; bound parameters are never recorded regardless. |
-| `leaf` | `true` | Record each query as a terminal node, folding an instrumented driver beneath it. |
-| `templates` | `true` | Observe DTL template rendering beneath the view that asked for it. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `ignore_paths` | `requests` | `[]` | Request paths not to record, as path globs (`'/health'`, `'/static/*'`). An ignored request records nothing at all, its view, queries and template renders included. |
+| `statement` | `queries` | `false` | Record the SQL text on each query event, as compiled with placeholders; bound parameters are never recorded regardless. |
 
 ```toml
 [[instrument]]
 name = "django"
 ignore_paths = ["/health"]
-statement = true
-```
+templates = false
 
+[instrument.queries]
+statement = true
+
+[instrument.views]
+capture_result = "types"
+```
 ## How it patches
 
 For the implementation detail see the module docstrings of

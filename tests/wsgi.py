@@ -3,7 +3,7 @@
 Framework test clients drive an application in process too, but they
 own the moment the response iterable is consumed and closed, and
 that moment is what a request event's closing line is tied to. This
-driver makes the moment explicit and plays the server's part exactly:
+driver makes the moment explicit and plays the server's aspect exactly:
 a complete environ, a `start_response` that honours the exc_info
 re-invocation rule and returns a working `write` callable, iteration
 of the result chunk by chunk, and a `close()` that is always called,

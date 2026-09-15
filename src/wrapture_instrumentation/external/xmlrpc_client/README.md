@@ -73,19 +73,38 @@ the endpoint shares.
   XML body reduces to its size; and a `Fault`'s text is recorded
   only as part of the raised exception, as any exception is.
 
+## Aspects
+
+The instrumentation binds these aspects, each a group of call sites
+with a switch, recording defaults and settings of its own:
+
+| Aspect | Wraps | Records by default |
+| ---- | ----- | ------------------ |
+| `requests` (primary) | every remote call through a `ServerProxy`, as one external event, and the transport beneath it | `leaf = true`; params as a count, results as types, hosts stripped of credentials, an explicit capture key under the aspect replacing that |
+
+An aspect is addressed as a sub-table of the entry,
+`[instrument.requests]`, and takes the recording keys an `[[observe]]`
+entry does (`capture`, `capture_args`, `capture_result`, `redact`,
+`redact_result`, `redact_marker`, `leaf` and `stack`) beside the
+settings listed below, so `capture_result = "types"` or
+`redact = ["token"]` under an aspect means exactly what it means on an
+observe entry. `enabled = false` under an aspect switches it off, and a
+bare `requests = false` on the entry means the same. The primary
+aspect's keys may be written flat on the entry. The [aspects
+section](https://wrapture.readthedocs.io/en/latest/instrumentation-packages.html#aspects)
+of the wrapture documentation has the whole scheme.
+
 ## Settings
 
-| Setting | Default | Controls |
-| ------- | ------- | -------- |
-| `leaf` | `true` | Whether each remote call is a terminal node. Off, the `Transport.request` event shows beneath each call, and anything else instrumented beneath (the `http.client` wire phases, say) shows too. |
-| `propagate` | `true` | Whether the trace identity is added to each request's headers. Off when calling services that should not see it, or when the application manages its own trace headers. Recording is unaffected. |
+| Setting | Aspect | Default | Controls |
+| ------- | ---- | ------- | -------- |
+| `propagate` | `requests` | `true` | Whether the trace identity is added to each request's headers. Off when calling services that should not see it, or when the application manages its own trace headers. Recording is unaffected. |
 
 ```toml
 [[instrument]]
 name = "xmlrpc.client"
 leaf = false
 ```
-
 ## How it patches
 
 For the implementation detail see the module docstring of

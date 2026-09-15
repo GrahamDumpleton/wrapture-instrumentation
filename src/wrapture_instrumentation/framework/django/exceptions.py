@@ -15,7 +15,8 @@ added here.
 The binding is behaviour only (`when=False`): it notes the exception
 against the enclosing request event with note_exception(), then lets
 the handler produce its 500, so the request shows the failure beside
-its status.
+its status. The `exceptions` aspect is its switch and nothing more: a
+behaviour records no values, so the aspect takes no recording keys.
 """
 
 from __future__ import annotations
@@ -45,7 +46,11 @@ def note_failure(
 
 def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind the catch-all and register its removal as this trigger's
-    cleanup."""
+    cleanup. The exceptions aspect gates the whole trigger: with it off,
+    nothing binds and there is nothing to clean up."""
+
+    if not instrumentation.settings["exceptions"].enabled:
+        return
 
     handler = wrapture.binding(module, "handle_uncaught_exception", when=False)
     handler.on_call.decorates(note_failure)

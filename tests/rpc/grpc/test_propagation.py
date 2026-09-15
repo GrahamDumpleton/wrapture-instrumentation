@@ -38,7 +38,7 @@ def test_a_traceparent_the_application_set_is_left_alone(
 
 
 def test_propagate_off_sends_nothing(tape: Tape) -> None:
-    with instrumentation(GRPCInstrumentation, propagate=False):
+    with instrumentation(GRPCInstrumentation, client={"propagate": False}):
         serving = serve()
         service = next(serving)
         try:
