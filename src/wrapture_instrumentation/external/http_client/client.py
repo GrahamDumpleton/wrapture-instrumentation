@@ -79,7 +79,11 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     # reference level, either way on top of the built-in sensitive
     # set; the aspect's other keys splat over each phase's own options.
 
-    policy, options = aspects.boundary_options(instrumentation.settings["requests"])
+    requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
+
+    policy, options = aspects.boundary_options(requests)
 
     def captured(name: str | None, value: Any) -> Any:
         """Bodies reduce to sizes, responses to types, and a url's

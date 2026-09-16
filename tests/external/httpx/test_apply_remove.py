@@ -45,3 +45,10 @@ def test_every_setting_combination_patches_the_same_names(
         assert choke_points()[1] is not before[1]
 
     assert choke_points() == before
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = httpx.Client.send
+
+    with instrumentation(HTTPXInstrumentation, requests=False):
+        assert httpx.Client.send is before

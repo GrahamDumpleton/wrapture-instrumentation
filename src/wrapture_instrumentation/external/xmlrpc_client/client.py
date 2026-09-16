@@ -113,6 +113,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     propagation; register their removal as this trigger's cleanup."""
 
     requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
 
     def record(
         wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]

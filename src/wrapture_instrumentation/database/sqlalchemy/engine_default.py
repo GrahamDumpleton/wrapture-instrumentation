@@ -146,6 +146,7 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     DefaultDialect; register their removal as this trigger's
     cleanup."""
 
+    statements = instrumentation.settings["statements"]
     connections = instrumentation.settings["connections"]
 
     def opens(
@@ -155,31 +156,32 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return wrapped(*args, **kwargs)
 
+    # Each aspect's switch gates its bindings.
+
+    named: dict[str, wrapture.Binding] = {}
+
+    if statements.enabled:
+        for name in ("do_execute", "do_executemany", "do_execute_no_params"):
+            named[name] = statement_binding(
+                module.DefaultDialect, name, instrumentation
+            )
+
     # The connect seam: its arguments are the driver's credentials,
     # so nothing of them is captured; the result reduces to its type.
 
-    connect = wrapture.binding(
-        module.DefaultDialect,
-        "connect",
-        category="database",
-        capture_args="none",
-        capture_result=captured,
-        **connections.options,
-    )
-    connect.on_call.decorates(opens)
+    if connections.enabled:
+        connect = wrapture.binding(
+            module.DefaultDialect,
+            "connect",
+            category="database",
+            capture_args="none",
+            capture_result=captured,
+            **connections.options,
+        )
+        connect.on_call.decorates(opens)
+        named["connect"] = connect
 
-    group = wrapture.bindings(
-        do_execute=statement_binding(
-            module.DefaultDialect, "do_execute", instrumentation
-        ),
-        do_executemany=statement_binding(
-            module.DefaultDialect, "do_executemany", instrumentation
-        ),
-        do_execute_no_params=statement_binding(
-            module.DefaultDialect, "do_execute_no_params", instrumentation
-        ),
-        connect=connect,
-    )
+    group = wrapture.bindings(**named)
     group.apply()
 
     instrumentation.on_cleanup(group.remove)

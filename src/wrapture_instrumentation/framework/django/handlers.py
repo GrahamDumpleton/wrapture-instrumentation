@@ -65,6 +65,9 @@ def instrument_wsgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
     """Bind WSGIHandler.__call__ to delegate through the recording
     middleware; register its removal as this trigger's cleanup."""
 
+    if not instrumentation.settings["requests"].enabled:
+        return
+
     request_filter, options = request_options(instrumentation)
 
     def boundary(
@@ -101,6 +104,9 @@ def instrument_wsgi(module: Any, instrumentation: wrapture.Instrumentation) -> N
 def instrument_asgi(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     """Bind ASGIHandler.__call__ to delegate through the recording
     middleware; register its removal as this trigger's cleanup."""
+
+    if not instrumentation.settings["requests"].enabled:
+        return
 
     request_filter, options = request_options(instrumentation)
 

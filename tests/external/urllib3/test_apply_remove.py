@@ -50,3 +50,10 @@ def test_after_removal_requests_record_nothing(server: Server) -> None:
 
     assert tape.all == []
     assert server.header(1, "traceparent") is None
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = PoolManager.urlopen
+
+    with instrumentation(Urllib3Instrumentation, requests=False):
+        assert PoolManager.urlopen is before

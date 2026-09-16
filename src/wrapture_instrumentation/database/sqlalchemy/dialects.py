@@ -34,6 +34,9 @@ def instrument(
     if dialect is None or "do_executemany" not in vars(dialect):
         return
 
+    if not instrumentation.settings["statements"].enabled:
+        return
+
     group = wrapture.bindings(
         do_executemany=statement_binding(dialect, "do_executemany", instrumentation)
     )

@@ -55,3 +55,10 @@ def test_propagate_off_leaves_send_headers_alone(leaf: bool) -> None:
         assert current["headers"] is before["headers"]
 
     assert choke_points() == before
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = choke_points()
+
+    with instrumentation(XMLRPCClientInstrumentation, requests=False):
+        assert choke_points() == before

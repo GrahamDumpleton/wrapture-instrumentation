@@ -154,6 +154,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     register its removal as this trigger's cleanup."""
 
     requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
 
     # The query policy is the requests aspect's capture_args (a redact
     # list already composed into it) or the reference level, either

@@ -48,3 +48,10 @@ def test_request_and_putheader_are_deliberately_not_patched() -> None:
     with instrumentation(HTTPClientInstrumentation):
         assert http.client.HTTPConnection.request is before_request
         assert http.client.HTTPConnection.putheader is before_putheader
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = http.client.HTTPConnection.connect
+
+    with instrumentation(HTTPClientInstrumentation, requests=False):
+        assert http.client.HTTPConnection.connect is before

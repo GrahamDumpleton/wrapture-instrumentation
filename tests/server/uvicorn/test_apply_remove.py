@@ -84,3 +84,10 @@ def test_a_config_loaded_after_removal_is_untouched() -> None:
     outer: Any = config.loaded_app
     assert not isinstance(outer, wrapture.ASGIMiddleware)
     assert not isinstance(getattr(outer, "app", None), wrapture.ASGIMiddleware)
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = uvicorn.config.Config.load
+
+    with instrumentation(UvicornInstrumentation, requests=False):
+        assert uvicorn.config.Config.load is before

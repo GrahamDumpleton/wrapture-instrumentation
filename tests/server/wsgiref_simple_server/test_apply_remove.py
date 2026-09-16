@@ -79,3 +79,10 @@ def test_the_wrapper_does_not_outlive_its_server() -> None:
         gc.collect()
 
         assert grave() is None
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = wsgiref.simple_server.WSGIServer.get_app
+
+    with instrumentation(WSGIRefSimpleServerInstrumentation, requests=False):
+        assert wsgiref.simple_server.WSGIServer.get_app is before

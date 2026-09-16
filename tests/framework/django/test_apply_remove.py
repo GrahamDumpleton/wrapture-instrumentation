@@ -99,3 +99,12 @@ def test_apply_then_remove_leaves_the_modules_as_they_were(
         assert current[name] is before[name], name
 
     assert not instance.applied
+
+
+def test_a_disabled_requests_aspect_leaves_the_handlers_bare() -> None:
+    wsgi = django.core.handlers.wsgi.WSGIHandler.__call__
+    asgi = django.core.handlers.asgi.ASGIHandler.__call__
+
+    with instrumentation(DjangoInstrumentation, requests=False):
+        assert django.core.handlers.wsgi.WSGIHandler.__call__ is wsgi
+        assert django.core.handlers.asgi.ASGIHandler.__call__ is asgi

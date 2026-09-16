@@ -42,3 +42,10 @@ def test_apply_then_remove_leaves_xmlrpc_server_as_it_was(join: bool) -> None:
         assert current[name] is before[name], name
 
     assert not instance.applied
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = xmlrpc.server.SimpleXMLRPCRequestHandler.do_POST
+
+    with instrumentation(XMLRPCServerInstrumentation, requests=False):
+        assert xmlrpc.server.SimpleXMLRPCRequestHandler.do_POST is before

@@ -186,16 +186,23 @@ def _recorder(instrumentation: wrapture.Instrumentation, binding: Any) -> Any:
     return record
 
 
-def _bind(owner: Any, instrumentation: wrapture.Instrumentation) -> wrapture.Binding:
+def _bind(
+    owner: Any, instrumentation: wrapture.Instrumentation
+) -> wrapture.Binding | None:
     """Bind urlopen on one door as an external leaf with the shared
-    recorder; register its removal as this trigger's cleanup."""
+    recorder, unless the requests aspect is off; register its removal
+    as this trigger's cleanup."""
+
+    requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return None
 
     # The requests aspect's recording keys splat over the binding's own
     # options; its capture_args is the query policy the recorder
     # applies, never the binding's argument capture.
 
     _, options = aspects.boundary_options(
-        instrumentation.settings["requests"],
+        requests,
         category="external",
         capture_args="none",
         capture_result="types",

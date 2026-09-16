@@ -103,3 +103,10 @@ def test_an_application_built_during_instrumentation_keeps_its_observations(
     assert [event.kind for event in tape.all] == ["call"]
     (event,) = tape.all
     assert event.path == f"{shop.index.__module__}:index"
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = aiohttp.web_app.Application._handle
+
+    with instrumentation(AiohttpWebInstrumentation, requests=False):
+        assert aiohttp.web_app.Application._handle is before

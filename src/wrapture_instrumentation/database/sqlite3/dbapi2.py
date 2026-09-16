@@ -219,6 +219,15 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return Connection(wrapped(*args, **kwargs))
 
+    def proxies(
+        wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
+        # With the connections aspect off the factory records nothing
+        # but still wraps its result, which is where the execute
+        # bindings live.
+
+        return Connection(wrapped(*args, **kwargs))
+
     def database_binding(
         target: Any, name: str, aspect: Any, label: str | None = None
     ) -> Any:
@@ -241,44 +250,46 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     # paths say sqlite3:connect and sqlite3.dbapi2:connect already,
     # so neither takes a label.
 
-    connect = database_binding(module, "connect", connections)
-    connect.on_call.decorates(opens)
+    named: dict[str, wrapture.Binding] = {}
 
-    dbapi2_connect = database_binding(module.dbapi2, "connect", connections)
-    dbapi2_connect.on_call.decorates(opens)
-
-    named: dict[str, wrapture.Binding] = {
-        "connect": connect,
-        "dbapi2_connect": dbapi2_connect,
-    }
+    for key, owner in (("connect", module), ("dbapi2_connect", module.dbapi2)):
+        if connections.enabled:
+            bound = database_binding(owner, "connect", connections)
+            bound.on_call.decorates(opens)
+        else:
+            bound = wrapture.binding(owner, "connect", when=False)
+            bound.on_call.decorates(proxies)
+        named[key] = bound
 
     # The execute family, on the cursor proxy and the connection's
     # shortcut forms alike, labelled with the sqlite3 names they
     # notionally wrap.
 
-    for owner, cls in (("Cursor", Cursor), ("Connection", Connection)):
-        for method in ("execute", "executemany", "executescript"):
-            bound = database_binding(
-                cls, method, statements, label=f"sqlite3:{owner}.{method}"
-            )
-            bound.on_call.decorates(queries)
-            named[f"{owner.lower()}_{method}"] = bound
+    if statements.enabled:
+        for owner, cls in (("Cursor", Cursor), ("Connection", Connection)):
+            for method in ("execute", "executemany", "executescript"):
+                bound = database_binding(
+                    cls, method, statements, label=f"sqlite3:{owner}.{method}"
+                )
+                bound.on_call.decorates(queries)
+                named[f"{owner.lower()}_{method}"] = bound
 
     # The transaction boundaries: the explicit calls, and the context
     # manager exit that performs one of them.
 
-    for method, operation in (("commit", "COMMIT"), ("rollback", "ROLLBACK")):
-        bound = database_binding(
-            Connection, method, connections, label=f"sqlite3:Connection.{method}"
-        )
-        bound.on_call.decorates(performs(operation))
-        named[method] = bound
+    if connections.enabled:
+        for method, operation in (("commit", "COMMIT"), ("rollback", "ROLLBACK")):
+            bound = database_binding(
+                Connection, method, connections, label=f"sqlite3:Connection.{method}"
+            )
+            bound.on_call.decorates(performs(operation))
+            named[method] = bound
 
-    closes = database_binding(
-        Connection, "__exit__", connections, label="sqlite3:Connection.__exit__"
-    )
-    closes.on_call.decorates(leaves)
-    named["exit"] = closes
+        closes = database_binding(
+            Connection, "__exit__", connections, label="sqlite3:Connection.__exit__"
+        )
+        closes.on_call.decorates(leaves)
+        named["exit"] = closes
 
     group = wrapture.bindings(**named)
     group.apply()

@@ -1,5 +1,16 @@
 # Changes
 
+## Version 1.0.0b3
+
+- A disabled aspect binds nothing. `enabled = false` under an aspect,
+  or a bare `connections = false` on the entry, now leaves that
+  aspect's call sites untouched in every package, as the READMEs
+  said; in 1.0.0b2 the database packages and every request boundary
+  and outbound request aspect ignored the switch. sqlite3's connect
+  factories still wrap the connection they return with `connections`
+  off, since the execute bindings live on that wrapper, but record
+  nothing.
+
 ## Version 1.0.0b2
 
 - Every instrumentation declares its aspects, the groups of call sites it

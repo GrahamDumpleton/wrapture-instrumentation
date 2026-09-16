@@ -147,15 +147,23 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
 
         return wrapped(*args, **kwargs)
 
-    handler = wrapture.binding(module.SimpleXMLRPCRequestHandler, "do_POST", when=False)
-    handler.on_call.decorates(boundary)
+    named: dict[str, wrapture.Binding] = {}
 
-    response = wrapture.binding(
-        module.SimpleXMLRPCRequestHandler, "send_response", when=False
-    )
-    response.on_call.decorates(status)
+    # The requests aspect gates the boundary and the status stamped
+    # onto it.
 
-    named: dict[str, wrapture.Binding] = {"handler": handler, "status": response}
+    if requests.enabled:
+        handler = wrapture.binding(
+            module.SimpleXMLRPCRequestHandler, "do_POST", when=False
+        )
+        handler.on_call.decorates(boundary)
+        named["handler"] = handler
+
+        response = wrapture.binding(
+            module.SimpleXMLRPCRequestHandler, "send_response", when=False
+        )
+        response.on_call.decorates(status)
+        named["status"] = response
 
     # The methods aspect gates the dispatch binding and supplies its
     # recording options, the params-to-count policy and the shape of

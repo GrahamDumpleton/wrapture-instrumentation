@@ -60,6 +60,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     boundary; register its removal as this trigger's cleanup."""
 
     requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
 
     # The aiohttp modules are already imported once this hook fires;
     # HTTPException is the class the status-not-failure rule keys on.

@@ -45,3 +45,10 @@ def test_every_setting_combination_patches_the_same_name(
         assert choke_point() is not before
 
     assert choke_point() is before
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = aiohttp.client.ClientSession._request
+
+    with instrumentation(AiohttpClientInstrumentation, requests=False):
+        assert aiohttp.client.ClientSession._request is before

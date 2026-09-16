@@ -74,3 +74,10 @@ def test_the_wrap_is_fixed_at_construction(tape: Tape) -> None:
         next(serving, None)
 
     assert len([event for event in tape.all if event.kind == "request"]) == 1
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = werkzeug.serving.BaseWSGIServer.__init__
+
+    with instrumentation(WerkzeugServingInstrumentation, requests=False):
+        assert werkzeug.serving.BaseWSGIServer.__init__ is before

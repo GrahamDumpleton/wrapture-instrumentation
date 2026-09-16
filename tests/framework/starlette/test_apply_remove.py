@@ -44,3 +44,10 @@ def test_apply_then_remove_leaves_the_modules_as_they_were(
         assert current[name] is before[name], name
 
     assert not instance.applied
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = starlette.applications.Starlette.__call__
+
+    with instrumentation(StarletteInstrumentation, requests=False):
+        assert starlette.applications.Starlette.__call__ is before

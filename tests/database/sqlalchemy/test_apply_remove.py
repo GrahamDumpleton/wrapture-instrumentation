@@ -81,3 +81,21 @@ def test_after_removal_an_existing_engine_runs_unrecorded() -> None:
     engine.dispose()
 
     assert tape.all == []
+
+
+def test_a_disabled_statements_aspect_leaves_do_execute_bare() -> None:
+    do_execute = DefaultDialect.do_execute
+    connect = DefaultDialect.connect
+
+    with instrumentation(SQLAlchemyInstrumentation, statements=False):
+        assert DefaultDialect.do_execute is do_execute
+        assert DefaultDialect.connect is not connect
+
+
+def test_a_disabled_connections_aspect_leaves_connect_and_commit_bare() -> None:
+    connect = DefaultDialect.connect
+    commit = Connection._commit_impl
+
+    with instrumentation(SQLAlchemyInstrumentation, connections=False):
+        assert DefaultDialect.connect is connect
+        assert Connection._commit_impl is commit

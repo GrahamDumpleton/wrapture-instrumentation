@@ -27,6 +27,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     register their removal as this trigger's cleanup."""
 
     connections = instrumentation.settings["connections"]
+    if not connections.enabled:
+        return
 
     def performs(operation: str) -> Any:
         def record(

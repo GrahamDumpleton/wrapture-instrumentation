@@ -127,6 +127,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     register the binding's removal as this trigger's cleanup."""
 
     requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
 
     # CIMultiDict is aiohttp's own header container, present wherever
     # aiohttp is. The query policy is the requests aspect's capture_args

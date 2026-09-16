@@ -60,3 +60,29 @@ def test_after_removal_connections_come_back_bare() -> None:
         assert type(bare) is sqlite3.Connection
     finally:
         bare.close()
+
+
+def test_a_disabled_statements_aspect_leaves_the_execute_family_bare() -> None:
+    execute = dbapi2.Cursor.execute
+    commit = dbapi2.Connection.commit
+
+    with instrumentation(SQLite3Instrumentation, statements=False):
+        assert dbapi2.Cursor.execute is execute
+        assert dbapi2.Connection.commit is not commit
+
+
+def test_a_disabled_connections_aspect_still_wraps_the_connection() -> None:
+    # The factories still substitute the recording connection, which
+    # the execute bindings need, but record nothing and the boundaries
+    # stay bare.
+
+    commit = dbapi2.Connection.commit
+    connect = sqlite3.connect
+
+    with instrumentation(SQLite3Instrumentation, connections=False):
+        assert dbapi2.Connection.commit is commit
+        assert sqlite3.connect is not connect
+
+        wrapped = sqlite3.connect(":memory:")
+        assert isinstance(wrapped, dbapi2.Connection)
+        wrapped.close()

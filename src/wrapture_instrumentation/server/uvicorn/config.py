@@ -66,6 +66,8 @@ def instrument(module: Any, instrumentation: wrapture.Instrumentation) -> None:
     cleanup."""
 
     requests = instrumentation.settings["requests"]
+    if not requests.enabled:
+        return
 
     # The requests aspect becomes the middleware's own options, built
     # once: ignored paths a filter on when= (tree=True so a declined

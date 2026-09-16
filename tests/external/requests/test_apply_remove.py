@@ -43,3 +43,10 @@ def test_every_setting_combination_patches_the_same_name(
         assert choke_point() is not before
 
     assert choke_point() is before
+
+
+def test_a_disabled_requests_aspect_leaves_the_boundary_bare() -> None:
+    before = requests.sessions.Session.send
+
+    with instrumentation(RequestsInstrumentation, requests=False):
+        assert requests.sessions.Session.send is before
